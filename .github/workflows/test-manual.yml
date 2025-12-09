@@ -1,0 +1,95 @@
+
+name: Manual - Plan & Apply (test, OIDC)
+
+on:
+  workflow_dispatch:   # manual trigger only
+
+permissions:
+  contents: read
+  id-token: write      # <-- required for OIDC
+  actions: read
+  deployments: write
+
+jobs:
+  plan-test:
+    runs-on: ubuntu-latest
+    environment: test   # binds to the federated credential for 'test'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC, no secrets)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        working-directory: infy_terraform
+        run: terraform fmt -check -recursive
+
+      - name: Init backend (test)
+        working-directory: infy_terraform/environments/test
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
+            -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
+            -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}"
+
+      - name: Terraform validate
+        working-directory: infy_terraform/environments/test
+        run: terraform validate
+
+      - name: tfsec (security scan)
+        uses: aquasecurity/tfsec-action@v1.1.0
+        with:
+          working_directory: infy_terraform
+
+      - name: Terraform plan (test)
+        working-directory: infy_terraform/environments/test
+        run: terraform plan -var-file="test.auto.tfvars" -out=tfplan.bin
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-test
+          path: infy_terraform/environments/test/tfplan.bin
+
+  apply-test:
+    runs-on: ubuntu-latest
+    needs: [ plan-test ]
+    environment: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Init backend (test)
+        working-directory: infy_terraform/environments/test
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
+            -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
+            -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}"
+
+      - name: Terraform apply (test)
+        working-directory: infy_terraform/environments/test
+        run: terraform apply -auto-approve

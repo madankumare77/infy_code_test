@@ -1,0 +1,15 @@
+variable "env" { type = string }
+variable "cluster_name_prefix" { type = string }
+variable "location" { type = string }
+variable "rg_name" { type = string }
+variable "administrator_username" { type = string }
+variable "administrator_password" { type = string }
+variable "shard_count" { type = string }
+variable "compute_tier" { type = string }
+variable "high_availability_mode" { type = string }
+variable "storage_size_in_gb" { type = string }
+variable "mongodb_version" { type = string }
+variable "kv_id" { type = string }
+variable "vnet_id" { type = string }
+variable "subnet_id" { type = string }
+variable "geo_replica_location" { type = string }
