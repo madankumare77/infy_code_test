@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write      # OIDC token for azure/login
+  id-token: write      # required for OIDC
   actions: read
   deployments: write
 
@@ -19,13 +19,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Show repo layout (diagnostic)
-        run: |
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          ls -la
-          echo "---- directories (depth 3) ----"
-          find . -maxdepth 3 -type d -print
 
       - name: Verify TF_WORKDIR exists
         run: |
@@ -46,14 +39,15 @@ jobs:
       # - name: Terraform fmt (repo root)
       #   run: terraform fmt -check -recursive
 
-      - name: Terraform init (test backend)
+      - name: Terraform init (AAD backend)
         working-directory: ${{ env.TF_WORKDIR }}
         run: |
           terraform init \
             -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
             -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
             -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
-            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}"
+            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
+            -backend-config="use_azuread_auth=true"
 
       - name: Terraform validate
         working-directory: ${{ env.TF_WORKDIR }}
@@ -95,16 +89,16 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Terraform init (test backend)
+      - name: Terraform init (AAD backend)
         working-directory: ${{ env.TF_WORKDIR }}
         run: |
           terraform init \
             -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
             -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
             -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
-            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}"
+            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
+            -backend-config="use_azuread_auth=true"
 
       - name: Terraform apply (test)
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform
-          apply -auto-approve
+        run: terraform apply -auto-approve tfplan.bin
