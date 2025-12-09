@@ -6,19 +6,32 @@ on:
 
 permissions:
   contents: read
-  id-token: write      # <-- required for OIDC
+  id-token: write      # OIDC token for azure/login
   actions: read
   deployments: write
 
 jobs:
   plan-test:
     runs-on: ubuntu-latest
-    environment: test   # binds to the federated credential for 'test'
+    environment: test
+    env:
+      TF_WORKDIR: environments/test
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Azure login (OIDC, no secrets)
+      - name: Show repo layout (diagnostic)
+        run: |
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          ls -la
+          echo "---- directories (depth 3) ----"
+          find . -maxdepth 3 -type d -print
+
+      - name: Verify TF_WORKDIR exists
+        run: |
+          test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
+
+      - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
           client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
@@ -30,12 +43,11 @@ jobs:
         with:
           terraform_wrapper: false
 
-      # - name: Terraform fmt
-      #   working-directory: infy_terraform
+      # - name: Terraform fmt (repo root)
       #   run: terraform fmt -check -recursive
 
-      - name: Init backend (test)
-        working-directory: infy_terraform/environments/test
+      - name: Terraform init (test backend)
+        working-directory: ${{ env.TF_WORKDIR }}
         run: |
           terraform init \
             -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
@@ -44,23 +56,30 @@ jobs:
             -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}"
 
       - name: Terraform validate
-        working-directory: infy_terraform/environments/test
+        working-directory: ${{ env.TF_WORKDIR }}
         run: terraform validate
 
+      # - name: tfsec (security scan)
+      #   uses: aquasecurity/tfsec-action@v1.1.0
+      #   with:
+      #     working_directory: .
+
       - name: Terraform plan (test)
-        working-directory: infy_terraform/environments/test
-        run: terraform plan -var-file="test.auto.tfvars" -out=tfplan.bin
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform plan -out=tfplan.bin
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-test
-          path: infy_terraform/environments/test/tfplan.bin
+          path: ${{ env.TF_WORKDIR }}/tfplan.bin
 
   apply-test:
     runs-on: ubuntu-latest
     needs: [ plan-test ]
     environment: test
+    env:
+      TF_WORKDIR: environments/test
 
     steps:
       - uses: actions/checkout@v4
@@ -76,8 +95,8 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Init backend (test)
-        working-directory: infy_terraform/environments/test
+      - name: Terraform init (test backend)
+        working-directory: ${{ env.TF_WORKDIR }}
         run: |
           terraform init \
             -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
@@ -86,5 +105,6 @@ jobs:
             -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}"
 
       - name: Terraform apply (test)
-        working-directory: infy_terraform/environments/test
-        run: terraform apply -auto-approve
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform
+          apply -auto-approve
