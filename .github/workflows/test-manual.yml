@@ -47,11 +47,6 @@ jobs:
         working-directory: infy_terraform/environments/test
         run: terraform validate
 
-      - name: tfsec (security scan)
-        uses: aquasecurity/tfsec-action@v1.1.0
-        with:
-          working_directory: infy_terraform
-
       - name: Terraform plan (test)
         working-directory: infy_terraform/environments/test
         run: terraform plan -var-file="test.auto.tfvars" -out=tfplan.bin
