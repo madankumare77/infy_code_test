@@ -199,4 +199,5 @@ jobs:
   
       - name: Terraform apply (test)
         working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform apply -auto-approve
   
