@@ -46,12 +46,12 @@ locals {
         #     }
         #   }
         # }
-        # snet-kv = {
-        #   address_prefix     = "10.0.5.0/24"
-        #   create_nsg         = true
-        #   create_route_table = true
-        #   service_endpoints  = ["Microsoft.KeyVault"]
-        # }
+        snet-kv = {
+          address_prefix     = "10.0.5.0/24"
+          create_nsg         = false
+          create_route_table = false
+          service_endpoints  = ["Microsoft.KeyVault"]
+        }
         # snet-redis = {
         #   address_prefix = "10.0.6.0/24"
         #   create_nsg     = false
@@ -101,11 +101,11 @@ locals {
 locals {
   storage_accounts = {
     stfile = {
-      account_tier             = "Premium"
-      account_replication_type = "LRS"
-      account_kind             = "FileStorage"    # StorageV2 for blob storage
-      snet_id                  = var.enable_storage_account ? module.vnet["vnet003"].vnet_id : ""
-      vnet_id                  = var.enable_storage_account ? module.vnet["vnet003"].subnet_ids["snet-st"] : ""
+      account_tier                      = "Premium"
+      account_replication_type          = "LRS"
+      account_kind                      = "FileStorage" # StorageV2 for blob storage
+      snet_id                           = var.enable_storage_account ? module.vnet["vnet003"].vnet_id : ""
+      vnet_id                           = var.enable_storage_account ? module.vnet["vnet003"].subnet_ids["snet-st"] : ""
       https_traffic_only_enabled        = true
       shared_access_key_enabled         = true
       min_tls_version                   = "TLS1_2"
@@ -235,8 +235,8 @@ locals {
       active_directory_auth_enabled = true       # Set to true if you want to enable Active Directory authentication
       vnet_id                       = var.enable_postgresql_flex ? module.vnet["vnet003"].vnet_id : ""
       subnet_id                     = var.enable_postgresql_flex ? module.vnet["vnet003"].subnet_ids["snet-psql"] : ""
-      log_categories    = ["PostgreSQLLogs"]
-      metric_categories = ["AllMetrics"]
+      log_categories                = ["PostgreSQLLogs"]
+      metric_categories             = ["AllMetrics"]
       tags = {
         environment = var.env
         created_by  = "terraform"
@@ -250,8 +250,8 @@ locals {
 locals {
   apim_configs = {
     apim3 = {
-      publisher_name = "Infosys"
-      subnet_id      = var.enable_apim ? module.vnet["vnet003"].subnet_ids["snet-apim"] : ""
+      publisher_name                = "Infosys"
+      subnet_id                     = var.enable_apim ? module.vnet["vnet003"].subnet_ids["snet-apim"] : ""
       publisher_email               = "" #publisher email
       sku_name                      = "Developer_1"
       public_network_access_enabled = true
@@ -321,8 +321,8 @@ locals {
       redis_version             = "6"
       subnet_id                 = var.enable_redis_cache ? module.vnet["vnet003"].subnet_ids["snet-redis"] : ""
       vnet_id                   = var.enable_redis_cache ? module.vnet["vnet003"].vnet_id : ""
-      enable_redis_diagnostics = true
-      metric_categories        = ["AllMetrics"]
+      enable_redis_diagnostics  = true
+      metric_categories         = ["AllMetrics"]
 
       tags = {
         created_by = "terraform"
