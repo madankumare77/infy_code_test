@@ -1,5 +1,5 @@
 
-name: Infosys-CICD-Test
+name: Infosys-CICD-prod
 
 on:
   workflow_dispatch:   # manual trigger only
@@ -11,64 +11,72 @@ permissions:
   deployments: write
 
 jobs:
-  plan-test:
+  plan-prod:
     runs-on: ubuntu-latest
-    environment: test
+    environment: prod
     env:
-      TF_WORKDIR: environments/test
+      TF_WORKDIR: environments/prod
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Verify TF_WORKDIR exists
         run: |
-          test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
+          prod -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+          client-id:       ${{ secrets.PROD_AZURE_CLIENT_ID }}
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.PROD_AZURE_SUBSCRIPTION_ID }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
 
+      # - name: Terraform fmt (repo root)
+      #   run: terraform fmt -check -recursive
 
       - name: Terraform init (AAD backend)
         working-directory: ${{ env.TF_WORKDIR }}
         run: |
           terraform init \
-            -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
-            -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
-            -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
-            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
+            -backend-config="resource_group_name=${{ secrets.PROD_TF_BACKEND_RG }}" \
+            -backend-config="storage_account_name=${{ secrets.PROD_TF_BACKEND_SA }}" \
+            -backend-config="container_name=${{ secrets.PROD_TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ secrets.PROD_TF_BACKEND_KEY }}" \
             -backend-config="use_azuread_auth=true"
 
       - name: Terraform validate
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform validate
 
+      # - name: tfsec (security scan)
+      #   uses: aquasecurity/tfsec-action@v1.1.0
+      #   with:
+      #     working_directory: .
 
-      - name: Terraform plan (test)
+      - name: Terraform plan (prod)
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform plan -out=tfplan.bin
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-test
+          name: tfplan-prod
           path: ${{ env.TF_WORKDIR }}/tfplan.bin
 
 
-  apply-test:
+
+# option1: Download the plan artifact and apply it
+  apply-prod:
     runs-on: ubuntu-latest
-    needs: [ plan-test ]
-    environment: test
+    needs: [ plan-prod ]
+    environment: prod
     env:
-      TF_WORKDIR: environments/test
+      TF_WORKDIR: environments/prod
   
     steps:
       - uses: actions/checkout@v4
@@ -76,9 +84,9 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+          client-id:       ${{ secrets.PROD_AZURE_CLIENT_ID }}
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.PROD_AZURE_SUBSCRIPTION_ID }}
   
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -88,27 +96,29 @@ jobs:
         working-directory: ${{ env.TF_WORKDIR }}
         env:
           ARM_TENANT_ID:        ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID:  ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
-          ARM_CLIENT_ID:        ${{ secrets.TEST_AZURE_CLIENT_ID }}
+          ARM_SUBSCRIPTION_ID:  ${{ secrets.PROD_AZURE_SUBSCRIPTION_ID }}
+          ARM_CLIENT_ID:        ${{ secrets.PROD_AZURE_CLIENT_ID }}
         run: |
           terraform init \
-            -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
-            -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
-            -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
-            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
+            -backend-config="resource_group_name=${{ secrets.PROD_TF_BACKEND_RG }}" \
+            -backend-config="storage_account_name=${{ secrets.PROD_TF_BACKEND_SA }}" \
+            -backend-config="container_name=${{ secrets.PROD_TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ secrets.PROD_TF_BACKEND_KEY }}" \
             -backend-config="use_azuread_auth=true"
   
+      # NEW: download the plan into environments/PROD
       - name: Download plan artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan-test
+          name: tfplan-prod
           path: ${{ env.TF_WORKDIR }}
   
       - name: Verify plan exists
         working-directory: ${{ env.TF_WORKDIR }}
-        run: ls -la && test -f tfplan.bin || { echo "::error::tfplan.bin missing"; exit 1; }
+        run: ls -la && prod -f tfplan.bin || { echo "::error::tfplan.bin missing"; exit 1; }
   
-      - name: Terraform apply (test)
+      - name: Terraform apply (prod)
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform apply -auto-approve tfplan.bin
+
 

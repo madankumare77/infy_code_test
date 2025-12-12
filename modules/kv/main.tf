@@ -62,23 +62,23 @@ resource "azurerm_private_endpoint" "pe" {
   }
   private_dns_zone_group {
     name                 = "default"
-    private_dns_zone_ids = [azurerm_private_dns_zone.example[0].id]
+    private_dns_zone_ids = [var.private_dns_zone_id]
   }
 }
 
-resource "azurerm_private_dns_zone" "example" {
-  count               = var.private_endpoint_enabled ? 1 : 0
-  name                = "privatelink.vaultcore.azure.net"
-  resource_group_name = var.rg_name
-}
+# resource "azurerm_private_dns_zone" "example" {
+#   count               = var.private_endpoint_enabled ? 1 : 0
+#   name                = "privatelink.vaultcore.azure.net"
+#   resource_group_name = var.rg_name
+# }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "example" {
-  count                 = var.private_endpoint_enabled ? 1 : 0
-  name                  = format("%s-%s-link", var.env, azurerm_key_vault.kv.name)
-  private_dns_zone_name = azurerm_private_dns_zone.example[0].name
-  virtual_network_id    = var.vnet_id
-  resource_group_name   = var.rg_name
-}
+# resource "azurerm_private_dns_zone_virtual_network_link" "example" {
+#   count                 = var.private_endpoint_enabled ? 1 : 0
+#   name                  = format("%s-%s-link", var.env, azurerm_key_vault.kv.name)
+#   private_dns_zone_name = azurerm_private_dns_zone.example[0].name
+#   virtual_network_id    = var.vnet_id
+#   resource_group_name   = var.rg_name
+# }
 
 
 # resource "azurerm_private_dns_a_record" "dns_a_sta" {
@@ -113,4 +113,9 @@ resource "random_id" "unique" {
 
 output "kv_id" {
   value = azurerm_key_vault.kv.id
+}
+
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone to link the Private Endpoint to."
+  type        = string
 }

@@ -23,6 +23,38 @@ module "vnet" {
   dns_servers            = each.value.dns_servers
 }
 
+locals {
+  private_dns_zones = {
+    kv = {
+      private_dns_zone_name = "privatelink.vaultcore.azure.net"
+      vnet_id               = module.vnet["vnet003"].vnet_id
+    }
+    # openai = {
+    #   private_dns_zone_name = "privatelink.openai.azure.com"
+    #   vnet_id               = module.vnet["vnet003"].vnet_id
+    # }
+    # storage = {
+    #   private_dns_zone_name = "privatelink.blob.core.windows.net"
+    #   vnet_id               = module.vnet["vnet003"].vnet_id
+    # }
+  }
+}
+
+module "private_dns_zone" {
+  source                = "../../modules/private_dns"
+  for_each              = var.enable_private_dns_zone ? local.private_dns_zones : {}
+  rg_name               = module.resource_group.rg_name
+  vnet_id               = each.value.vnet_id
+  private_dns_zone_name = each.value.private_dns_zone_name
+  depends_on            = [module.vnet]
+
+}
+variable "enable_private_dns_zone" {
+  description = "Enable creation of Private DNS Zone"
+  type        = bool
+  default     = true
+}
+
 module "storage_account" {
   source   = "../../modules/storageaccount"
   for_each = var.enable_storage_account ? local.storage_accounts : {}
@@ -81,6 +113,7 @@ module "kv" {
   private_endpoint_enabled      = each.value.private_endpoint_enabled # Set to true if you want to enable private endpoint
   tags                          = each.value.tags
   depends_on                    = [module.law.log_analytics_workspace_id] # Ensure the log analytics workspace is created before KV
+  private_dns_zone_id           = module.private_dns_zone["kv"].private_dns_zone_id
 
 }
 
@@ -192,9 +225,9 @@ module "sqlmi" {
   sqlmi_db_name                = each.value.sqlmi_db_name
   enable_sqlmi_diagnostics     = each.value.enable_sqlmi_diagnostics
   log_analytics_workspace_id   = var.enable_log_analytics_workspace ? module.law.log_analytics_workspace_id : ""
-  metric_categories           = each.value.metric_categories
-  network_security_group_name = each.value.network_security_group_name
-  tags                        = each.value.tags
+  metric_categories            = each.value.metric_categories
+  network_security_group_name  = each.value.network_security_group_name
+  tags                         = each.value.tags
 }
 
 module "law" {
@@ -256,16 +289,16 @@ module "azure_openai" {
 }
 
 module "azure_machine_learning" {
-  source = "../../modules/azure-machine-learning"
-  for_each = var.enable_aml_workspace ? local.aml_workspace : {}
-  env      = var.env
-  location = var.location
-  rg_name  = module.resource_group.rg_name
-  ml_workspace_nameprefix     = each.value.ml_workspace_nameprefix
-  vnet_id                       = each.value
-  subnet_id                     = each.value.subnet_id
-  key_vault_id = each.value.key_vault_id
-  storage_account_id = each.value.storage_account_id
+  source                  = "../../modules/azure-machine-learning"
+  for_each                = var.enable_aml_workspace ? local.aml_workspace : {}
+  env                     = var.env
+  location                = var.location
+  rg_name                 = module.resource_group.rg_name
+  ml_workspace_nameprefix = each.value.ml_workspace_nameprefix
+  vnet_id                 = each.value
+  subnet_id               = each.value.subnet_id
+  key_vault_id            = each.value.key_vault_id
+  storage_account_id      = each.value.storage_account_id
 }
 
 module "azure_documentdb" {
