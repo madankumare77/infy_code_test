@@ -16,3 +16,9 @@ variable "function_apps" {
 variable "rg_name" { type = string }
 variable "location" { type = string }
 variable "env" { type = string }
+variable "storage_account_access_key" {
+  type = string
+}
+variable "storage_account_name" {
+  type = string
+}

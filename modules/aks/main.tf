@@ -1,5 +1,5 @@
 resource "azurerm_kubernetes_cluster" "aks" {
-  name                              = "${var.env}-${var.aks_name_prefix}"
+  name                              = "${var.aks_name_prefix}"
   location                          = var.location
   resource_group_name               = var.rg_name
   dns_prefix                        = var.aks_name_prefix
@@ -55,7 +55,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 }
 
 resource "azurerm_user_assigned_identity" "this" {
-  name                = "${var.env}-${var.aks_name_prefix}-id"
+  name                = "${var.aks_name_prefix}-id"
   location            = var.location
   resource_group_name = var.rg_name
 }
@@ -95,10 +95,9 @@ resource "azurerm_role_assignment" "reader_role" {
 
 module "aks_diag" {
   source                     = "../../modules/diagnostic_setting"
-  name                       = "${var.env}-${var.aks_name_prefix}-diagnostic"
+  name                       = "${var.aks_name_prefix}-diagnostic"
   target_resource_id         = azurerm_kubernetes_cluster.aks.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
   log_categories             = ["kube-audit", "kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   metric_categories          = ["AllMetrics"]
 }
-

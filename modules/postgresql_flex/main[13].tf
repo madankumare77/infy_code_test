@@ -1,5 +1,5 @@
 resource "azurerm_postgresql_flexible_server" "this" {
-  name                   = format("%s-%s", var.env, var.psql_server_name_prefix)
+  name                   = var.psql_server_name_prefix
   resource_group_name    = var.rg_name
   location               = var.location #Multi-Zone HA is not supported in Centarl India region so we default to SameZone
   sku_name               = var.sku_name #az postgres flexible-server list-skus --location centralindia

@@ -1,5 +1,5 @@
 resource "azurerm_virtual_network" "vnet" {
-  name                = "${var.env}-${var.location}-${var.vnet_name_prefix}"
+  name                = "vnet-${var.vnet_name_prefix}-${var.env}"
   location            = var.location
   resource_group_name = var.rg_name
   address_space       = [var.address_space]
@@ -26,7 +26,7 @@ resource "azurerm_virtual_network" "vnet" {
 
 resource "azurerm_subnet" "subnet" {
   for_each             = var.subnet_configs
-  name                 = each.key
+  name                 = "snet-${each.key}-${var.env}"
   resource_group_name  = var.rg_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = [each.value.address_prefix]
@@ -44,24 +44,24 @@ resource "azurerm_subnet" "subnet" {
 
 }
 
-resource "azurerm_network_security_group" "nsg" {
-  for_each            = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_nsg }
-  name                = "${each.key}-nsg"
-  location            = var.location
-  resource_group_name = var.rg_name
-}
+# resource "azurerm_network_security_group" "nsg" {
+#   for_each            = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_nsg }
+#   name                = "nsg-${each.key}"
+#   location            = var.location
+#   resource_group_name = var.rg_name
+# }
 
 
 resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
   for_each                  = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_nsg }
   subnet_id                 = azurerm_subnet.subnet[each.key].id
-  network_security_group_id = azurerm_network_security_group.nsg[each.key].id
+  network_security_group_id = var.nsg_default
 
 }
 
 resource "azurerm_route_table" "example" {
   for_each                      = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_route_table }
-  name                          = "${each.key}-route-table"
+  name                          = "rt-${each.key}"
   location                      = var.location
   resource_group_name           = var.rg_name
   bgp_route_propagation_enabled = true

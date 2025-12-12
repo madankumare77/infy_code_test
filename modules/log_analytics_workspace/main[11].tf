@@ -1,7 +1,7 @@
 
 
 resource "azurerm_log_analytics_workspace" "law" {
-  name                = format("%s-%s-law", var.env, var.law_name)
+  name                = format("IL-log-cind-%s-%s", var.law_name, var.env)
   location            = var.location
   resource_group_name = var.rg_name
   sku                 = var.law_sku

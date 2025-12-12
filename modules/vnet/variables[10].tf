@@ -54,3 +54,7 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "nsg_default" {
+  type = string  
+}

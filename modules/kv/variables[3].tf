@@ -49,7 +49,7 @@ variable "enabled_for_deployment" {
   type        = bool
   default     = true
 }
-variable "enanble_for_disk_encryption" {
+variable "enable_for_disk_encryption" {
   description = "Enable the Key Vault for disk encryption"
   type        = bool
   default     = true

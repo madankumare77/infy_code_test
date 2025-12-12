@@ -1,7 +1,7 @@
 
 
 resource "azurerm_application_insights" "preprod" {
-  name                = "${var.env}-app-insights"
+  name                = var.name_prefix
   location            = var.location
   resource_group_name = var.rg_name
   application_type    = "web"

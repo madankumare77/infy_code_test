@@ -11,6 +11,6 @@ output "subnet_ids" {
 
 }
 
-output "nsg_name" {
-  value = { for nsg_key, nsg_value in azurerm_network_security_group.nsg : nsg_key => nsg_value.name }
-}
+#output "nsg_name" {
+#  value = { for nsg_key, nsg_value in azurerm_network_security_group.nsg : nsg_key => nsg_value.name }
+#}

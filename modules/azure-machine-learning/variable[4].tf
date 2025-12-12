@@ -6,3 +6,7 @@ variable "subnet_id" { type = string }
 variable "vnet_id" { type = string }
 variable "key_vault_id" { type = string }
 variable "storage_account_id" { type = string }
+variable "application_insights_id" {
+  type = string
+  default = null
+}

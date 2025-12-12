@@ -1,20 +1,35 @@
+# Virtual network configuration with subnets for claims application infrastructure
 locals {
   virtual_networks = {
-    vnet003 = {
+    cind-claims = {
       location               = "centralindia"
-      address_space          = "10.0.0.0/16"
+      address_space          = "100.122.96.0/24"
       enable_ddos_protection = false
       dns_servers            = ["168.63.129.16"] #168.63.129.16 is the Azure-provided DNS server
       subnet_configs = {
-        # snet-aks = {
-        #   address_prefix     = "10.0.0.0/24"
-        #   create_nsg         = false
-        #   create_route_table = false
-        # }
-        # snet-apim = {
-        #   address_prefix = "10.0.1.0/24"
-        #   create_nsg     = false
-        # }
+        cind-pvt = {
+          address_prefix     = "100.122.96.0/27"
+          service_endpoints  = ["Microsoft.Storage","Microsoft.KeyVault"]
+        }
+        cind-cosmosdb = {
+          address_prefix = "100.122.96.32/28"
+          service_endpoints = ["Microsoft.AzureCosmosDB"]
+        }
+        cind-aiservice = {
+          address_prefix = "100.122.96.48/28"
+          #service_endpoints = [""]
+        }
+       cind-funtionsapp = {
+         address_prefix     = "100.122.96.64/28"
+         service_endpoints  = ["Microsoft.Storage", "Microsoft.Web"]
+          delegation = {
+            name = "functionapp"
+            service_delegation = {
+              name    = "Microsoft.Web/serverFarms"
+              actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+            }
+          }
+        }
         # snet-psql = {
         #   address_prefix    = "10.0.2.0/24"
         #   create_nsg        = false
@@ -27,31 +42,12 @@ locals {
         #     }
         #   }
         # }
-        # snet-st = {
-        #   address_prefix     = "10.0.3.0/24"
+        # snet-kv = {
+        #   address_prefix     = "10.0.5.0/24"
         #   create_nsg         = true
         #   create_route_table = true
-        #   service_endpoints  = ["Microsoft.Storage"]
+        #   service_endpoints  = ["Microsoft.KeyVault"]
         # }
-        # snet-pass = {
-        #   address_prefix     = "10.0.4.0/24"
-        #   create_nsg         = true
-        #   create_route_table = true
-        #   service_endpoints  = ["Microsoft.Storage", "Microsoft.Web"]
-        #   delegation = {
-        #     name = "functionapp"
-        #     service_delegation = {
-        #       name    = "Microsoft.Web/serverFarms"
-        #       actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-        #     }
-        #   }
-        # }
-        snet-kv = {
-          address_prefix     = "10.0.5.0/24"
-          create_nsg         = false
-          create_route_table = false
-          service_endpoints  = ["Microsoft.KeyVault"]
-        }
         # snet-redis = {
         #   address_prefix = "10.0.6.0/24"
         #   create_nsg     = false
@@ -73,103 +69,143 @@ locals {
         #   address_prefix    = "10.0.8.0/24"
         #   service_endpoints = ["Microsoft.Storage"]
         # }
-        snet-cosmos-mongo = {
-          address_prefix    = "10.0.9.0/24"
-          service_endpoints = ["Microsoft.AzureCosmosDB"]
-        }
-        snet-di = {
-          address_prefix = "10.0.10.0/24"
-        }
+        # snet-cosmos-mongo = {
+        #   address_prefix    = "10.0.9.0/24"
+        #   service_endpoints = ["Microsoft.AzureCosmosDB"]
+        # }
+        # snet-di = {
+        #   address_prefix = "10.0.10.0/24"
+        # }
       }
-    },
-    # vnet004 = {
-    #   location               = "eastus"
-    #   address_space          = "10.1.0.0/16"
-    #   enable_ddos_protection = false
-    #   dns_servers            = ["168.63.129.16"] #168.63.129.16 is the Azure-provided DNS server
-    #   subnet_configs = {
-    #     snet-aoai = {
-    #       address_prefix    = "10.1.0.0/24"
-    #       service_endpoints = ["Microsoft.CognitiveServices"]
-    #       create_nsg         = true
-    #     }
-    #   }
-    # }
+    }
   }
 }
 
+# Storage account configuration for function app data and blob storage
 locals {
   storage_accounts = {
-    stfile = {
-      account_tier                      = "Premium"
-      account_replication_type          = "LRS"
-      account_kind                      = "FileStorage" # StorageV2 for blob storage
-      snet_id                           = var.enable_storage_account ? module.vnet["vnet003"].vnet_id : ""
-      vnet_id                           = var.enable_storage_account ? module.vnet["vnet003"].subnet_ids["snet-st"] : ""
+    stcindclaims = {
+      account_tier             = "Standard"
+      account_replication_type = "LRS"
+      account_kind             = "StorageV2"    # StorageV2 for blob storage,, FileStorage for file storage
+      access_tier              = "Hot"
+      # Correct mapping: subnet id for snet_id, VNet id for vnet_id
+      snet_id                  = var.enable_storage_account ? module.vnet["cind-claims"].subnet_ids["cind-pvt"] : ""
+      vnet_id                  = var.enable_storage_account ? module.vnet["cind-claims"].vnet_id : ""
       https_traffic_only_enabled        = true
       shared_access_key_enabled         = true
       min_tls_version                   = "TLS1_2"
-      enable_blob_versioning            = true
+      enable_blob_versioning            = false
       delete_retention_days             = 7
       infrastructure_encryption_enabled = true
-      enable_storage_diagnostics        = false
-      private_endpoint_enabled          = false
-      subresource_names                 = ["file"] #["blob", "file", "table", "queue"]
+      enable_storage_diagnostics        = true
+      private_endpoint_enabled          = true
+      subresource_names                 = ["blob"] #["blob", "file", "table", "queue"]
       log_categories                    = ["StorageRead", "StorageWrite", "StorageDelete"]
-      metric_categories                 = ["AllMetrics", "Transaction", "Capacity"]
+      metric_categories                 = ["Transaction"]
       tags = {
         environment = var.env
         created_by  = "terraform"
+        INFY_EA_WorkLoadType = "test"
+        "INFY_EA_BusinessUnit": "IS",
+        "INFY_EA_CustomTag03": "EPMProjects",
+        "INFY_EA_CustomTag01": "No PO",
+        "INFY_EA_WorkLoadType": "Test",
+        "INFY_EA_Workinghours": "NA",
+        "INFY_EA_CustomTag04": "PaaS",
+        "INFY_EA_CostCenter": "No FR_IS",
+        "INFY_EA_Role": "Function App",
+        "INFY_EA_ResourceName": "func-claims-test ",
+        "INFY_EA_Automation": "Yes",
+        "INFY_EA_Purpose": "IS Internal",
+        "INFY_EA_Technical_Tags": "EPM_CFG@infosys.com",
+        "INFY_EA_ProjectCode": "EPMPRJBE",
+        "INFY_EA_Weekendshutdown": "No",
+        "INFY_EA_CustomTag02": "Infosys Limited"
       }
     }
   }
 }
 
+# Azure Function Apps configuration for serverless compute workloads
 locals {
-  #function app configurations
   function_apps = {
-    func-win03 = {
-      os_type                       = "Windows"
-      runtime_stack                 = "v6.0"
-      storage_required              = true
-      public_network_access_enabled = false
-      subnet_id                     = var.enable_function_app ? module.vnet["vnet003"].subnet_ids["snet-pass"] : ""
-      vnet_id                       = var.enable_function_app ? module.vnet["vnet003"].vnet_id : ""
-      tags = {
-        environment = var.env
-        created_by  = "terraform"
-        app_os      = "windows"
-      }
-    }
-    func-linux03 = {
+    # func-claims-orchestration-test = {
+    #   os_type                       = "Windows"
+    #   runtime_stack                 = "v6.0"
+    #   public_network_access_enabled = false
+    #   subnet_id                     = var.enable_function_app ? module.vnet["cind-claims"].subnet_ids[""] : ""
+    #   vnet_id                       = var.enable_function_app ? module.vnet["cind-claims"].vnet_id : ""
+    #   tags = {
+    #     environment = var.env
+    #     created_by  = "terraform"
+    #     app_os      = "windows"
+    #   }
+    # }
+    func-claims-test = {
       os_type                       = "Linux"
-      runtime_stack                 = "11"
-      storage_required              = true
+      runtime_stack                 = "21"
       public_network_access_enabled = false
-      subnet_id                     = var.enable_function_app ? module.vnet["vnet003"].subnet_ids["snet-pass"] : ""
-      vnet_id                       = var.enable_function_app ? module.vnet["vnet003"].vnet_id : ""
+      subnet_id                     = var.enable_function_app ? module.vnet["cind-claims"].subnet_ids["cind-funtionsapp"] : ""
+      vnet_id                       = var.enable_function_app ? module.vnet["cind-claims"].vnet_id : ""
       tags = {
-        environment = var.env
         created_by  = "terraform"
         app_os      = "linux"
+        "INFY_EA_BusinessUnit": "IS",
+        "INFY_EA_CustomTag03": "EPMProjects",
+        "INFY_EA_CustomTag01": "No PO",
+        "INFY_EA_WorkLoadType": "Test",
+        "INFY_EA_Workinghours": "NA",
+        "INFY_EA_CustomTag04": "PaaS",
+        "INFY_EA_CostCenter": "No FR_IS",
+        "INFY_EA_Role": "Function App",
+        "INFY_EA_ResourceName": "func-claims-test ",
+        "INFY_EA_Automation": "Yes",
+        "INFY_EA_Purpose": "IS Internal",
+        "INFY_EA_Technical_Tags": "EPM_CFG@infosys.com",
+        "INFY_EA_ProjectCode": "EPMPRJBE",
+        "INFY_EA_Weekendshutdown": "No",
+        "INFY_EA_CustomTag02": "Infosys Limited"
       }
     }
   }
 }
 
+# Azure Key Vault configurations for secure storage of secrets and certificates
 locals {
   kv_configs = {
-    kv003 = {
+    kv005-cind-claims = {
       sku_name                      = "standard"
-      soft_delete_retention_days    = 7
-      purge_protection_enabled      = false
-      enable_rbac_authorization     = false
-      private_endpoint_enabled      = false
+      soft_delete_retention_days    = 90
+      purge_protection_enabled      = true
+      enable_rbac_authorization     = true
+      private_endpoint_enabled      = true
       public_network_access_enabled = false
-      vnet_id                       = var.enable_kv ? module.vnet["vnet003"].vnet_id : ""
-      subnet_id                     = var.enable_kv ? module.vnet["vnet003"].subnet_ids["snet-kv"] : ""
+      vnet_id                       = var.enable_kv ? module.vnet["cind-claims"].vnet_id : ""
+      subnet_id                     = var.enable_kv ? module.vnet["cind-claims"].subnet_ids["cind-pvt"] : ""
+      enable_kv_diagnostics         = true
       log_categories                = ["AuditEvent"]
       metric_categories             = ["AllMetrics"]
+      use_existing_private_dns_zone = false
+      create_private_dns_link       = true
+      tags = {
+        created_by = "terraform"
+      }
+    }
+    kv02-cind-claims = {
+      sku_name                      = "standard"
+      soft_delete_retention_days    = 90
+      purge_protection_enabled      = true
+      enable_rbac_authorization     = true
+      private_endpoint_enabled      = true
+      public_network_access_enabled = false
+      vnet_id                       = var.enable_kv ? module.vnet["cind-claims"].vnet_id : ""
+      subnet_id                     = var.enable_kv ? module.vnet["cind-claims"].subnet_ids["cind-pvt"] : ""
+      enable_kv_diagnostics         = true
+      log_categories                = ["AuditEvent"]
+      metric_categories             = ["AllMetrics"]
+      use_existing_private_dns_zone = true
+      create_private_dns_link       = false
       tags = {
         created_by = "terraform"
       }
@@ -177,6 +213,7 @@ locals {
   }
 }
 
+# Azure Kubernetes Service (AKS) cluster configuration with node pools
 locals {
   aks_configs = {
     aks003 = {
@@ -188,7 +225,7 @@ locals {
       os_sku             = "Ubuntu"
       node_os_disk_type  = "Ephemeral"
       encryption_host    = true
-      vnet_subnet_id     = var.enable_aks ? module.vnet["vnet003"].subnet_ids["snet-aks"] : ""
+      vnet_subnet_id     = var.enable_aks ? module.vnet["cind-claims"].subnet_ids["snet-aks"] : ""
       aks_service_cidr   = "10.1.0.0/16"
       aks_dns_service_ip = "10.1.0.10"
       tags = {
@@ -219,9 +256,8 @@ locals {
   }
 }
 
+# PostgreSQL flexible server configurations for relational database workloads
 locals {
-  # PostgreSQL flexible server configurations
-  # Each key is the server name, and the value is a map of its properties
   postgresql_servers = {
     postgres003 = {
       psql_administrator_login      = "psqladmin"
@@ -233,10 +269,10 @@ locals {
       high_availability_mode        = "SameZone" # Multi-Zone HA is not supported in Central India region so we default to SameZone
       standby_zone                  = "1"        # Specify the standby zone if needed, e.g., "1", "2", or "3"
       active_directory_auth_enabled = true       # Set to true if you want to enable Active Directory authentication
-      vnet_id                       = var.enable_postgresql_flex ? module.vnet["vnet003"].vnet_id : ""
-      subnet_id                     = var.enable_postgresql_flex ? module.vnet["vnet003"].subnet_ids["snet-psql"] : ""
-      log_categories                = ["PostgreSQLLogs"]
-      metric_categories             = ["AllMetrics"]
+      vnet_id                       = var.enable_postgresql_flex ? module.vnet["cind-claims"].vnet_id : ""
+      subnet_id                     = var.enable_postgresql_flex ? module.vnet["cind-claims"].subnet_ids["snet-psql"] : ""
+      log_categories    = ["PostgreSQLLogs"]
+      metric_categories = ["AllMetrics"]
       tags = {
         environment = var.env
         created_by  = "terraform"
@@ -247,11 +283,12 @@ locals {
   }
 }
 
+# API Management service configuration for API gateway and management
 locals {
   apim_configs = {
     apim3 = {
-      publisher_name                = "Infosys"
-      subnet_id                     = var.enable_apim ? module.vnet["vnet003"].subnet_ids["snet-apim"] : ""
+      publisher_name = "Infosys"
+      subnet_id      = var.enable_apim ? module.vnet["cind-claims"].subnet_ids["snet-apim"] : ""
       publisher_email               = "" #publisher email
       sku_name                      = "Developer_1"
       public_network_access_enabled = true
@@ -262,7 +299,7 @@ locals {
   }
 }
 
-# Define your APIs in locals (as you had before)
+# API definitions with operations and endpoints for APIM
 locals {
   apis = {
     dev-api = {
@@ -301,7 +338,7 @@ locals {
     }
   }
 
-  # Transform the APIs to match the module's expected structure
+  # Transform API configurations into format expected by the APIM module
   transformed_apis = {
     for api_name, operations in local.apis : api_name => {
       service_url = "https://${api_name}-example.com/api"
@@ -310,7 +347,7 @@ locals {
   }
 }
 
-# Redis cache configurations
+# Redis cache configuration for distributed caching and session management
 locals {
   redis_cache = {
     aks-redis003 = {
@@ -319,10 +356,10 @@ locals {
       redis_sku_name            = "Standard"
       redis_minimum_tls_version = "1.2"
       redis_version             = "6"
-      subnet_id                 = var.enable_redis_cache ? module.vnet["vnet003"].subnet_ids["snet-redis"] : ""
-      vnet_id                   = var.enable_redis_cache ? module.vnet["vnet003"].vnet_id : ""
-      enable_redis_diagnostics  = true
-      metric_categories         = ["AllMetrics"]
+      subnet_id                 = var.enable_redis_cache ? module.vnet["cind-claims"].subnet_ids["snet-redis"] : ""
+      vnet_id                   = var.enable_redis_cache ? module.vnet["cind-claims"].vnet_id : ""
+      enable_redis_diagnostics = true
+      metric_categories        = ["AllMetrics"]
 
       tags = {
         created_by = "terraform"
@@ -331,6 +368,7 @@ locals {
   }
 }
 
+# SQL Managed Instance configuration for enterprise SQL Server workloads
 locals {
   sqlmi_servers = {
     sqlmi001 = {
@@ -339,8 +377,8 @@ locals {
       administrator_login_password = ""
       enable_sqlmi_diagnostics     = true
       metric_categories            = ["AllMetrics"]
-      subnet_id                    = var.enable_sqlmi ? module.vnet["vnet003"].subnet_ids["snet-sqlmi"] : ""
-      network_security_group_name  = var.enable_sqlmi ? module.vnet["vnet003"].nsg_name["snet-sqlmi"] : ""
+      subnet_id                    = var.enable_sqlmi ? module.vnet["cind-claims"].subnet_ids["snet-sqlmi"] : ""
+      network_security_group_name  = var.enable_sqlmi ? module.vnet["cind-claims"].nsg_name["snet-sqlmi"] : ""
       tags = {
         created_by = "terraform"
       }
@@ -348,32 +386,70 @@ locals {
   }
 }
 
+# Azure Document Intelligence (Form Recognizer) configuration for document processing
 locals {
   di_account = {
     documentIntellegence = {
-      di_name_prefix = "di"
+      di_name_prefix = "di-claims-test-poc"
       sku_name       = "S0"
       kind           = "FormRecognizer"
-      vnet_id        = var.enable_di_account ? module.vnet["vnet003"].vnet_id : ""
-      snet_id        = var.enable_di_account ? module.vnet["vnet003"].subnet_ids["snet-di"] : ""
+      vnet_id        = var.enable_di_account ? module.vnet["cind-claims"].vnet_id : ""
+      snet_id        = var.enable_di_account ? module.vnet["cind-claims"].subnet_ids["cind-aiservice"] : ""
+      custom_subdomain_name = "di-claims-test-poc"
+      tags = {
+        created_by  = "terraform"
+        "INFY_EA_BusinessUnit": "IS"
+        "INFY_EA_CustomTag03": "EPMCLOUD"
+        "INFY_EA_CustomTag01": "No PO"
+        "INFY_EA_WorkLoadType": "test"
+        "INFY_EA_Workinghours": "00: 00 23:69"
+        "INFY_EA_CustomTag04": "PaaS"
+        "INFY_EA_CostCenter": "No FR_IS"
+        "INFY_EA_Role": "Document intelligence"
+        "INFY_EA_ResourceName": "di-claims-test-poc"
+        "INFY_EA_Automation": "No"
+        "INFY_EA_Purpose": "IS Internal"
+        "INFY_EA_Technical_Tags": "EPM_Cloud@infosys.com"
+        "INFY_EA_Weekendshutdown": "No"
+        "INFY_EA_ProjectCode": "EPMPRJBE"
+        "INFY_EA_CustomTag02": "Infosys Limited"
+      }
     }
   }
 }
 
-
-
+# Azure Machine Learning workspace configuration for ML model training and deployment
 locals {
   aml_workspace = {
-    amlworkspace001 = {
-      ml_workspace_nameprefix = "amlworkspace001"
-      vnet_id                 = var.enable_aml_workspace ? module.vnet["vnet003"].vnet_id : ""
-      subnet_id               = var.enable_aml_workspace ? module.vnet["vnet003"].subnet_ids["snet-ml"] : ""
-      key_vault_id            = var.enable_kv ? module.kv["kv003"].kv_id : ""
-      storage_account_id      = var.enable_storage_account ? module.storage_account["st003"].storage_account_id : ""
+    mlw-claims-test = {
+      ml_workspace_nameprefix = "mlw01-claims-test"
+      vnet_id                 = var.enable_aml_workspace ? module.vnet["cind-claims"].vnet_id : ""
+      subnet_id               = var.enable_aml_workspace ? module.vnet["cind-claims"].subnet_ids["cind-aiservice"] : ""
+      key_vault_id            = var.enable_kv ? module.kv["kv005-cind-claims"].kv_id : ""
+      storage_account_id      = var.enable_storage_account ? module.storage_account["stcindclaims"].storage_account_id : ""
+      tags = {
+        created_by  = "terraform"
+        "INFY_EA_BusinessUnit": "IS"
+        "INFY_EA_CustomTag03": "EPMCLOUD"
+        "INFY_EA_CustomTag01": "No PO"
+        "INFY_EA_WorkLoadType": "test"
+        "INFY_EA_Workinghours": "00: 00 23:69"
+        "INFY_EA_CustomTag04": "PaaS"
+        "INFY_EA_CostCenter": "No FR_IS"
+        "INFY_EA_Role": "Machine Learning"
+        "INFY_EA_ResourceName": "mlw-claims-test"
+        "INFY_EA_Automation": "No"
+        "INFY_EA_Purpose": "IS Internal"
+        "INFY_EA_Technical_Tags": "EPM_Cloud@infosys.com"
+        "INFY_EA_Weekendshutdown": "No"
+        "INFY_EA_ProjectCode": "EPMPRJBE"
+        "INFY_EA_CustomTag02": "Infosys Limited"
+      }
     }
   }
 }
 
+# Azure Cosmos DB for MongoDB vCore cluster configuration
 locals {
   azure_documentdb = {
     docdb001 = {
@@ -385,17 +461,83 @@ locals {
       geo_replica_location   = "South India"
       storage_size_in_gb     = 32
       mongodb_version        = "8.0"
+      vnet_id                = var.enable_azure_documentdb ? module.vnet["cind-claims"].vnet_id : ""
+      subnet_id              = var.enable_azure_documentdb ? module.vnet["cind-claims"].subnet_ids["snet-cosmos-mongo"] : ""
+    }
+  }
+}
+
+# User-assigned managed identities for Azure resource authentication
+locals {
+  UserAssignedIdenti = {
+    functionapp = {
+     identity_name = "mannaged_identity_func-claims-test"
+    }
+    cosmos = {
+      identity_name = "mannaged_identity_cosdb-cind-claims-test"
+    }
+  }
+}
+
+# Azure OpenAI service configuration for AI/ML model deployment
+locals {
+  azure_openai = {
+    is-cind-oai-claims-test = {
+      location              = "South India" #Central India not supported for openAI
+      sku_name              = "S0"
+      kind                  = "OpenAI"
+      private_dns_zone_name = "privatelink.openai.azure.com"
+      subnet_id             = var.enable_azure_openai ? module.vnet["cind-claims"].subnet_ids["cind-aiservice"] : ""
+      vnet_id               = var.enable_azure_openai ? module.vnet["cind-claims"].vnet_id : ""
+      custom_subdomain      = "is-cind-oai-claims-test"
+      tags = {
+        "INFY_EA_BusinessUnit": "IS"
+        "INFY_EA_CustomTag03": "EPMCLOUD"
+        "INFY_EA_CustomTag01": "No PO"
+        "INFY_EA_WorkLoadType": "test"
+        "INFY_EA_Workinghours": "00: 00 23:69"
+        "INFY_EA_CustomTag04": "PaaS"
+        "INFY_EA_CostCenter": "No FR_IS"
+        "INFY_EA_Role": "OpenAI service"
+        "INFY_EA_ResourceName": "is-sind-oai-test01"
+        "INFY_EA_Automation": "No"
+        "INFY_EA_Purpose": "IS Internal"
+        "INFY_EA_Technical_Tags": "EPM_Cloud@infosys.com"
+        "INFY_EA_Weekendshutdown": "No"
+        "INFY_EA_ProjectCode": "EPMPRJBE"
+        "INFY_EA_CustomTag02": "Infosys Limited"
+      }
     }
   }
 }
 
 locals {
-  UserAssignedIdenti = {
-    functionapp = {
-      identity_name = "functionapp"
-    }
-    cosmos = {
-      identity_name = "cosmos"
+  cosmos_configs = {
+    "cosdb01-cind-claims-test" = {
+      cosmos_kind = "MongoDB"
+      offer_type  = "Standard"
+      geo_location1 = "SouthIndia"
+      vnet_id = module.vnet["cind-claims"].vnet_id
+      subnet_id = module.vnet["cind-claims"].subnet_ids["cind-cosmosdb"]
+      #UserAssigned_identity = module.azure_identity["cosmos"].user_assigned_id
+      UserAssigned_identity = module.azure_identity["cosmos"].user_assigned_id
+      tags = {  
+        "INFY_EA_Weekendshutdown": "No"
+        "INFY_EA_Technical_Tags": "satish.kongara@infosys.com"
+        "INFY_EA_BusinessUnit": "is"
+        "INFY_EA_WorkLoadType": "Test"
+        "INFY_EA_ResourceName": "cosdb-cind-commstation-test"
+        "INFY_EA_Workinghours": "00:00 23:59"
+        "INFY_EA_CustomTag02": "infosys Limited"
+        "INFY_EA_CustomTag01": "no PO"
+        "INFY_EA_ProjectCode": "EPMDB"
+        "INFY_EA_CustomTag03": "EPMDB"
+        "INFY_EA_CustomTag04": "paaS"
+        "INFY_EA_CostCenter": "no FR_IS"
+        "INFY_EA_Automation": "yes"
+        "INFY_EA_Purpose": "IS Internal"
+        "INFY_EA_Role": "DB Server"
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 
 resource "azurerm_mongo_cluster" "example" {
-  name                   = "${var.env}-${var.cluster_name_prefix}"
+  name                   = "${var.cluster_name_prefix}"
   location               = var.location
   resource_group_name    = var.rg_name
   administrator_username = var.administrator_username

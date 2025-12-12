@@ -1,7 +1,7 @@
 #deployment time take anywhere from 1 to 8 hours for a healthy deployment in the first time.
 
 resource "azurerm_mssql_managed_instance" "this" {
-  name                         = format("%s-%s", var.env, var.sqlmi_server_name_prefix)
+  name                         = var.sqlmi_server_name_prefix
   resource_group_name          = var.rg_name
   location                     = var.location
   subnet_id                    = var.subnet_id

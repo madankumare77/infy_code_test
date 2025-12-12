@@ -82,38 +82,14 @@ variable "enable_UserAssignedIdenti" {
   type        = bool
   default     = false
 }
-# variable "identity_name" {
-#   description = "Name for the User Assigned Identity"
-#   type        = string
-#   default     = ""
-# }
-
-
-
-variable "application_type" {
-  description = "Application type for Insights (e.g., web, other)"
-  type        = string
-  default     = "web"
+variable "enable_cosmos" {
+  type = bool
+  default = false
 }
-variable "retention_in_days" {
-  description = "Data retention period in days"
-  type        = number
-  default     = 30
-}
+
 
 variable "key_vault_id" {
   description = "Resource ID of the Key Vault for AML workspace"
   type        = string
   default     = ""
-}
-variable "inbound_network_access" {
-  description = "Inbound network access restriction for AML workspace"
-  type        = string
-  default     = "AllowFromAzureResource"
-}
-
-variable "outbound_network_access" {
-  description = "Outbound network access restriction for AML workspace"
-  type        = string
-  default     = "AllowOnlyApprovedOutbound"
 }

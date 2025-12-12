@@ -9,12 +9,18 @@ terraform {
   required_version = ">= 1.0"
 }
 
-terraform {
-  backend "azurerm" {
+provider "azurerm" {
+  features {
+    resource_group {
+      prevent_deletion_if_contains_resources = true
+       }
   }
 }
 
+# Discover current Azure tenant from the authenticated CLI context
+data "azurerm_client_config" "current" {}
 
-provider "azurerm" {
-  features {}
+# Explicitly configure AzureAD provider using the current tenant
+provider "azuread" {
+  tenant_id = data.azurerm_client_config.current.tenant_id
 }

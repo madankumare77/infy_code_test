@@ -2,7 +2,7 @@
 #    Redis cache       #
 #############################
 resource "azurerm_redis_cache" "redis" {
-  name                          = format("%s-%s", var.env, var.redis_name_prefix)
+  name                          = var.redis_name_prefix
   location                      = var.location
   resource_group_name           = var.rg_name
   capacity                      = var.redis_capacity            # P2 => capacity 2
@@ -27,7 +27,7 @@ resource "azurerm_redis_cache" "redis" {
 }
 
 resource "azurerm_private_endpoint" "redis_pe" {
-  name                = "${var.redis_name_prefix}-pe"
+  name                = "pvt-endpoint-${var.redis_name_prefix}"
   location            = var.location
   resource_group_name = var.rg_name
   subnet_id           = var.subnet_id
