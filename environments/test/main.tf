@@ -1,6 +1,6 @@
 module "resource_group" {
   source   = "../../modules/resource-group"
-  rg_name  = var.env
+  rg_name  = "infy-cicd-test"
   location = var.location
 }
 
