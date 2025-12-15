@@ -16,29 +16,19 @@ resource "azurerm_key_vault" "kv" {
     virtual_network_subnet_ids = var.subnet_id != "" ? [var.subnet_id] : []
   }
 
-  # enabled_for_deployment          = var.enabled_for_deployment
-  # enabled_for_disk_encryption     = var.enable_for_disk_encryption
-  # enabled_for_template_deployment = var.enabled_for_template_deployment
+  enabled_for_deployment          = var.enabled_for_deployment
+  enabled_for_disk_encryption     = var.enable_for_disk_encryption
+  enabled_for_template_deployment = var.enabled_for_template_deployment
+
+  lifecycle {
+    #prevent_destroy = var.prevent_kv_deletion
+    prevent_destroy = true
+  }
 
   tags = merge(
     var.tags,
     {
       "Environment" = var.env
-      "Name"        = var.name_prefix
-      "INFY_EA_CustomTag01": "No Po"
-      "INFY_EA_CustomTag02": "Infosys Limited"
-      "INFY_EA_CustomTag03": "EPMCFG"
-      "INFY_EA_CustomTag04": "PaaS"
-      "INFY_EA_BusinessUnit": "IS"
-      "INFY_EA_Automation": "No"
-      "INFY_EA_CostCenter": "No FR_IS"
-      "INFY_EA_Technical_Tag": "EPM_CFG@infosys.com"
-      "INFY_EA_Role": "key vault"
-      "INFY_EA_ProjectCode": "EPMPRJBE"
-      "INFY_EA_Purpose": "IS Internal"
-      "INFY_EA_Weekendshutdown": "No"
-      "INFY_EA_Workinghours": "00:00 23:59",
-      "INFY_EA_WorkLoadType": "Test"
     }
   )
 }
@@ -59,22 +49,8 @@ resource "azurerm_private_endpoint" "pe" {
   }
   private_dns_zone_group {
     name                 = "default"
-    private_dns_zone_ids = var.use_existing_private_dns_zone ? [data.azurerm_private_dns_zone.existing[0].id] : [azurerm_private_dns_zone.example[0].id]
+    private_dns_zone_ids = [var.private_dns_zone_id]
   }
-}
-
-resource "azurerm_private_dns_zone" "example" {
-  count               = var.private_endpoint_enabled && !var.use_existing_private_dns_zone ? 1 : 0
-  name                = "privatelink.vaultcore.azure.net"
-  resource_group_name = var.rg_name
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "example" {
-  count                 = var.private_endpoint_enabled && var.create_private_dns_link ? 1 : 0
-  name                  = format("%s-%s-link", var.env, azurerm_key_vault.kv.name)
-  private_dns_zone_name = var.use_existing_private_dns_zone ? data.azurerm_private_dns_zone.existing[0].name : azurerm_private_dns_zone.example[0].name
-  virtual_network_id    = var.vnet_id
-  resource_group_name   = var.rg_name
 }
 
 
@@ -111,7 +87,10 @@ variable "use_existing_private_dns_zone" {
 }
 
 variable "create_private_dns_link" {
-  description = "If true, create a VNet link to the private DNS zone. Set to false when the VNet is already linked to avoid conflicts."
-  type        = bool
-  default     = true
+  type    = bool
+  default = true
+}
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone to link the Private Endpoint to."
+  type        = string
 }

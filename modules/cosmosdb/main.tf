@@ -1,6 +1,6 @@
 # Cosmos DB Account for MongoDB 
 resource "azurerm_cosmosdb_account" "cosmosdb" {
-  name                = "${var.cosmosdb_name_prefix}"
+  name                = var.cosmosdb_name_prefix
   location            = var.location
   resource_group_name = var.rg_name
   offer_type          = var.offer_type
@@ -72,21 +72,10 @@ resource "azurerm_cosmosdb_account" "cosmosdb" {
 
 
 
-resource "azurerm_private_dns_zone" "cosmos_mongo" {
-  name                = "privatelink.mongo.cosmos.azure.com"
-  resource_group_name = var.rg_name
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "vnet_link" {
-  name                  = "cosmos-mongo-dns-link"
-  resource_group_name   = var.rg_name
-  private_dns_zone_name = azurerm_private_dns_zone.cosmos_mongo.name
-  virtual_network_id    = var.vnet_id
-  registration_enabled  = false
-}
 
 
 resource "azurerm_private_endpoint" "cosmos_pe" {
+  count               = var.private_endpoint_enabled ? 1 : 0
   name                = "pvt-endpoint-${azurerm_cosmosdb_account.cosmosdb.name}"
   location            = var.location
   resource_group_name = var.rg_name
@@ -94,14 +83,14 @@ resource "azurerm_private_endpoint" "cosmos_pe" {
 
   private_dns_zone_group {
     name                 = "default"
-    private_dns_zone_ids = [azurerm_private_dns_zone.cosmos_mongo.id]
+    private_dns_zone_ids = [var.private_dns_zone_id]
   }
 
   private_service_connection {
     name                           = "pvt-endpoint-${azurerm_cosmosdb_account.cosmosdb.name}"
     private_connection_resource_id = azurerm_cosmosdb_account.cosmosdb.id
     is_manual_connection           = false
-    subresource_names = ["MongoDB"]
+    subresource_names              = ["MongoDB"]
   }
 }
 
@@ -116,10 +105,10 @@ output "cosmosdb_primary_key" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
-  name                           = "cosmos-diag"
-  target_resource_id             = azurerm_cosmosdb_account.cosmosdb.id
-  log_analytics_workspace_id     = var.log_analytics_workspace_id
- 
+  name                       = "cosmos-diag"
+  target_resource_id         = azurerm_cosmosdb_account.cosmosdb.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
   enabled_log {
     category = "DataPlaneRequests"
   }
@@ -132,7 +121,7 @@ resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
   enabled_log {
     category = "MongoRequests"
   }
- 
+
   # enabled_metric {
   #   category = "AllMetrics"
   # }
@@ -143,7 +132,7 @@ resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
     category = "SLI"
   }
 }
- 
+
 variable "log_analytics_workspace_id" {
   type = string
 }
@@ -151,4 +140,12 @@ variable "tags" {
   description = "A map of tags to assign to the storage account"
   type        = map(string)
   default     = {}
+}
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone to link the Private Endpoint to."
+  type        = string
+}
+variable "private_endpoint_enabled" {
+  description = "The name prefix for the Cognitive Account"
+  type        = string
 }

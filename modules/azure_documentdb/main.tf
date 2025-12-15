@@ -1,6 +1,6 @@
 
 resource "azurerm_mongo_cluster" "example" {
-  name                   = "${var.cluster_name_prefix}"
+  name                   = var.cluster_name_prefix
   location               = var.location
   resource_group_name    = var.rg_name
   administrator_username = var.administrator_username
@@ -10,6 +10,12 @@ resource "azurerm_mongo_cluster" "example" {
   high_availability_mode = var.high_availability_mode #"Disabled"
   storage_size_in_gb     = var.storage_size_in_gb     #"32"
   version                = var.mongodb_version        #"8.0"
+  tags = merge(
+    var.tags,
+    {
+      "Environment" = var.env
+    }
+  )
 }
 
 resource "azurerm_mongo_cluster" "example_geo_replica" {
@@ -26,24 +32,6 @@ resource "azurerm_mongo_cluster" "example_geo_replica" {
   }
 }
 
-# resource "random_password" "mongo_admin_pwd" {
-#   length           = 12
-#   special          = true
-#   min_upper        = 2
-#   min_lower        = 2
-#   min_numeric      = 2
-#   min_special      = 2
-# }
-
-
-# resource "azurerm_key_vault_secret" "mongo_admin_pwd" {
-#   name         = "mongo-admin-password"
-#   value        = random_password.mongo_admin_pwd.result
-#   key_vault_id = var.kv_id
-#   content_type = "password"
-# }
-
-
 # Cosmos Mongo vCore Private DNS
 resource "azurerm_private_dns_zone" "cosmos_zone" {
   name                = "privatelink.mongo.cosmos.azure.com"
@@ -59,6 +47,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "cosmos_zone_link" {
 
 # Cosmos Mongo vCore Private Endpoint
 resource "azurerm_private_endpoint" "cosmos_pe" {
+  count               = var.private_endpoint_enabled ? 1 : 0
   name                = "${azurerm_mongo_cluster.example.name}-pe"
   location            = var.location
   resource_group_name = var.rg_name
@@ -73,8 +62,24 @@ resource "azurerm_private_endpoint" "cosmos_pe" {
 
   private_dns_zone_group {
     name                 = "cosmos-dns-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.cosmos_zone.id]
+    private_dns_zone_ids = [var.private_dns_zone_id]
   }
 }
 
+variable "tags" {
+  description = "A map of tags to assign to the resources"
+  type        = map(string)
+  default     = {}
+}
+
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone to link the Private Endpoint to."
+  type        = string
+}
+
+variable "private_endpoint_enabled" {
+  description = "Enable Private Endpoint for the Cosmos Mongo vCore Cluster"
+  type        = bool
+  default     = false
+}
 

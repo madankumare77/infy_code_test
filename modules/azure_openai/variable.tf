@@ -5,6 +5,6 @@ variable "rg_name" { type = string }
 variable "kind" { type = string }
 variable "sku_name" { type = string }
 variable "UserAssigned_identity" {
-  type = string
+  type    = string
   default = null
 }

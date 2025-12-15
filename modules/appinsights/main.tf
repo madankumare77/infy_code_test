@@ -7,8 +7,11 @@ resource "azurerm_application_insights" "preprod" {
   application_type    = "web"
   #retention_in_days   = 30
   workspace_id = var.log_analytics_workspace_id
-  tags = {
-    Description = "Pre-Prod Application Insights"
-    LAW         = "pre-prod-law"
-  }
+  tags         = var.tags
+}
+
+variable "tags" {
+  description = "A map of tags to assign to the resources"
+  type        = map(string)
+  default     = {}
 }

@@ -44,34 +44,29 @@ resource "azurerm_subnet" "subnet" {
 
 }
 
-# resource "azurerm_network_security_group" "nsg" {
-#   for_each            = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_nsg }
-#   name                = "nsg-${each.key}"
-#   location            = var.location
-#   resource_group_name = var.rg_name
+
+# resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
+#   for_each = {
+#     for snet_key, snet_value in var.subnet_configs : snet_key => snet_value
+#     if snet_value.nsg_id != null && snet_value.nsg_id != ""
+#   }
+#   subnet_id                 = azurerm_subnet.subnet[each.key].id
+#   network_security_group_id = each.value.nsg_id
 # }
 
+# resource "azurerm_route_table" "example" {
+#   for_each                      = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_route_table }
+#   name                          = "rt-${each.key}"
+#   location                      = var.location
+#   resource_group_name           = var.rg_name
+#   bgp_route_propagation_enabled = true
+# }
 
-resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
-  for_each                  = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_nsg }
-  subnet_id                 = azurerm_subnet.subnet[each.key].id
-  network_security_group_id = var.nsg_default
-
-}
-
-resource "azurerm_route_table" "example" {
-  for_each                      = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_route_table }
-  name                          = "rt-${each.key}"
-  location                      = var.location
-  resource_group_name           = var.rg_name
-  bgp_route_propagation_enabled = true
-}
-
-resource "azurerm_subnet_route_table_association" "example" {
-  for_each       = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_route_table }
-  subnet_id      = azurerm_subnet.subnet[each.key].id
-  route_table_id = azurerm_route_table.example[each.key].id
-}
+# resource "azurerm_subnet_route_table_association" "example" {
+#   for_each       = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_route_table }
+#   subnet_id      = azurerm_subnet.subnet[each.key].id
+#   route_table_id = azurerm_route_table.example[each.key].id
+# }
 
 resource "azurerm_network_ddos_protection_plan" "ddos" {
   count               = var.enable_ddos_protection ? 1 : 0

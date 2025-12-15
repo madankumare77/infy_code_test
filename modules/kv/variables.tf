@@ -99,3 +99,8 @@ variable "enable_kv_diagnostics" {
   type        = bool
   default     = false
 }
+# variable "prevent_kv_deletion" {
+#   description = "Prevent deletion of the Key Vault"
+#   type        = bool
+#   default     = false
+# }

@@ -75,7 +75,7 @@ variable "enable_log_analytics_workspace" {
 variable "enable_aml_workspace" {
   description = "Enable or disable Azure Machine Learning Workspace module"
   type        = bool
-  default     = false  
+  default     = false
 }
 variable "enable_UserAssignedIdenti" {
   description = "Enable or disable User Assigned Identity module"
@@ -83,8 +83,13 @@ variable "enable_UserAssignedIdenti" {
   default     = false
 }
 variable "enable_cosmos" {
-  type = bool
+  type    = bool
   default = false
+}
+variable "enable_private_dns_zone" {
+  description = "Enable creation of Private DNS Zone"
+  type        = bool
+  default     = true
 }
 
 

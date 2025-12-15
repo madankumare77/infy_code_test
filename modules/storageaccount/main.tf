@@ -11,6 +11,7 @@ resource "azurerm_storage_account" "storage" {
   shared_access_key_enabled         = var.shared_access_key_enabled
   min_tls_version                   = var.min_tls_version #"TLS1_1.2"
   infrastructure_encryption_enabled = var.infrastructure_encryption_enabled
+  allow_nested_items_to_be_public   = var.allow_nested_items_to_be_public
 
   dynamic "network_rules" {
     for_each = var.snet_id != "" ? [1] : []
@@ -37,7 +38,27 @@ resource "azurerm_storage_account" "storage" {
       delete_retention_policy {
         days = var.delete_retention_days
       }
+      dynamic "container_delete_retention_policy" {
+        for_each = var.enable_container_delete_retention ? [1] : []
+        content {
+          days = var.container_delete_retention_days
+        }
+      }
     }
+  }
+
+  dynamic "immutability_policy" {
+    for_each = var.enable_immutability_policy ? [1] : []
+    content {
+      allow_protected_append_writes = true
+      period_since_creation_in_days = var.immutability_period_days
+      state                         = var.immutability_policy_state
+
+    }
+  }
+
+  lifecycle {
+    prevent_destroy = true #var.prevent_storage_account_deletion
   }
 
   tags = merge(
@@ -50,23 +71,6 @@ resource "azurerm_storage_account" "storage" {
   )
 }
 
-
-#resource "azurerm_storage_share" "quota" {
-#  name                 = "fileshare"
-#  storage_account_name = azurerm_storage_account.storage.name
-#  quota                = 1024 # 1 TB
-#}
-
-
-# module "storage_diag" {
-#   count                      = var.enable_storage_diagnostics ? 1 : 0
-#   source                     = "../../modules/diagnostic_setting"
-#   name                       = format("%s-%s-diagnostic", var.env, azurerm_storage_account.storage.name)
-#   target_resource_id         = "${azurerm_storage_account.storage.id}/blobServices/default"
-#   log_analytics_workspace_id = var.log_analytics_workspace_id
-#   log_categories             = var.log_categories    #["StorageRead", "StorageWrite", "StorageDelete"]
-#   metric_categories          = var.metric_categories #["AllMetrics"]
-# }
 
 
 resource "azurerm_monitor_diagnostic_setting" "sa_to_law" {
@@ -95,8 +99,8 @@ resource "azurerm_monitor_diagnostic_setting" "sa_to_law" {
     category = "Transaction"
     enabled  = true
     retention_policy {
-    days    = 0
-    enabled = false
+      days    = 0
+      enabled = false
     }
   }
 }
@@ -114,10 +118,10 @@ module "private_endpoints" {
   subresource_name               = each.value
   vnet_id                        = var.vnet_id
   subnet_id                      = var.snet_id
+  private_dns_zone_id            = var.private_dns_zone_id
 }
 
-
-
-resource "random_id" "unique" {
-  byte_length = 4
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone to link the Private Endpoint to."
+  type        = string
 }

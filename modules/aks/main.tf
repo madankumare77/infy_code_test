@@ -1,5 +1,5 @@
 resource "azurerm_kubernetes_cluster" "aks" {
-  name                              = "${var.aks_name_prefix}"
+  name                              = var.aks_name_prefix
   location                          = var.location
   resource_group_name               = var.rg_name
   dns_prefix                        = var.aks_name_prefix
@@ -35,10 +35,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
   network_profile {
     network_plugin      = var.network_plugin
     load_balancer_sku   = var.load_balancer_sku
-    network_plugin_mode = "overlay"
-    network_data_plane  = "cilium"
-    service_cidr        = var.aks_service_cidr   #"10.1.0.0/16"
-    dns_service_ip      = var.aks_dns_service_ip #"10.1.0.10"
+    network_plugin_mode = var.network_plugin_mode #"overlay"
+    network_data_plane  = var.network_data_plane  #"cilium"
+    service_cidr        = var.aks_service_cidr    #"10.1.0.0/16"
+    dns_service_ip      = var.aks_dns_service_ip  #"10.1.0.10"
   }
 
   microsoft_defender {

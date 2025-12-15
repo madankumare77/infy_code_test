@@ -29,17 +29,14 @@ resource "azurerm_service_plan" "plan" {
 
 resource "azurerm_windows_function_app" "windows" {
   for_each                                       = { for k, v in var.function_apps : k => v if v.os_type == "Windows" }
-  name                                           = "${each.key}"
+  name                                           = each.key
   location                                       = var.location
   resource_group_name                            = var.rg_name
   service_plan_id                                = azurerm_service_plan.plan[each.key].id
   public_network_access_enabled                  = each.value.public_network_access_enabled
-  ftp_publish_basic_authentication_enabled       = true
-  webdeploy_publish_basic_authentication_enabled = true
-  storage_account_name                           = var.storage_account_name
-  storage_account_access_key                     = var.storage_account_access_key
-  # storage_account_name                           = each.value.storage_required ? module.storage_account[each.key].storage_account_name : null
-  # storage_account_access_key                     = each.value.storage_required ? module.storage_account[each.key].primary_access_key : null
+  ftp_publish_basic_authentication_enabled       = false
+  webdeploy_publish_basic_authentication_enabled = false
+  storage_account_name                           = each.value.storage_account_name
   site_config {
     application_stack {
       dotnet_version = each.value.runtime_stack
@@ -53,8 +50,8 @@ resource "azurerm_windows_function_app" "windows" {
     # }
   }
   app_settings = {
-    FUNCTIONS_WORKER_RUNTIME   = "dotnet"
-    WEBSITE_RUN_FROM_PACKAGE   = "1"
+    FUNCTIONS_WORKER_RUNTIME = "dotnet"
+    WEBSITE_RUN_FROM_PACKAGE = "1"
     #storage_account_name       = each.value.storage_required ? module.storage_account[each.key].storage_account_name : null
     #storage_account_access_key = each.value.storage_required ? module.storage_account[each.key].primary_access_key : null
   }
@@ -64,15 +61,13 @@ resource "azurerm_windows_function_app" "windows" {
 
 resource "azurerm_linux_function_app" "linux" {
   for_each                      = { for k, v in var.function_apps : k => v if v.os_type == "Linux" }
-  name                          = "${each.key}"
+  name                          = each.key
   location                      = var.location
   resource_group_name           = var.rg_name
   service_plan_id               = azurerm_service_plan.plan[each.key].id
   public_network_access_enabled = each.value.public_network_access_enabled
-  storage_account_name                           = var.storage_account_name
-  storage_account_access_key                     = var.storage_account_access_key
-  # storage_account_name          = each.value.storage_required ? module.storage_account[each.key].storage_account_name : null
-  # storage_account_access_key    = each.value.storage_required ? module.storage_account[each.key].primary_access_key : null
+  storage_account_name          = each.value.storage_account_name
+  #storage_account_access_key                     = each.value.storage_account_access_key
   site_config {
     application_stack {
       java_version = each.value.runtime_stack
@@ -86,10 +81,8 @@ resource "azurerm_linux_function_app" "linux" {
     # }
   }
   app_settings = {
-    FUNCTIONS_WORKER_RUNTIME   = "java"
-    WEBSITE_RUN_FROM_PACKAGE   = each.value.runtime_stack
-    #storage_account_name       = each.value.storage_required ? module.storage_account[each.key].storage_account_name : null
-    #storage_account_access_key = each.value.storage_required ? module.storage_account[each.key].primary_access_key : null
+    FUNCTIONS_WORKER_RUNTIME = "java"
+    WEBSITE_RUN_FROM_PACKAGE = each.value.runtime_stack
   }
   virtual_network_subnet_id = each.value.subnet_id
   identity {
@@ -105,17 +98,17 @@ resource "azurerm_linux_function_app" "linux" {
 }
 
 data "azurerm_monitor_diagnostic_categories" "func_cats" {
-  for_each   = azurerm_linux_function_app.linux
+  for_each    = azurerm_linux_function_app.linux
   resource_id = each.value.id
 }
- 
+
 # Only enable the 'AppServiceAuditLogs' category (Access Audit)
 resource "azurerm_monitor_diagnostic_setting" "func_diag_audit" {
-  for_each                       = azurerm_linux_function_app.linux
-  name                           = "func-audit-to-law"
-  target_resource_id             = each.value.id
-  log_analytics_workspace_id     = var.log_analytics_workspace_id
- 
+  for_each                   = azurerm_linux_function_app.linux
+  name                       = "func-audit-to-law"
+  target_resource_id         = each.value.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
   dynamic "enabled_log" {
     for_each = [
       for c in data.azurerm_monitor_diagnostic_categories.func_cats[each.key].log_category_types :
@@ -125,7 +118,7 @@ resource "azurerm_monitor_diagnostic_setting" "func_diag_audit" {
       category = enabled_log.value
     }
   }
- 
+
   # (Optional) include metrics export if desired:
   dynamic "enabled_metric" {
     for_each = data.azurerm_monitor_diagnostic_categories.func_cats[each.key].metrics
@@ -145,7 +138,7 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
- 
+
 
 
 

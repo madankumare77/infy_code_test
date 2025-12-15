@@ -38,7 +38,7 @@ variable "account_tier" {
 }
 
 variable "access_tier" {
-  type = string
+  type    = string
   default = "Hot"
 }
 
@@ -81,7 +81,7 @@ variable "https_traffic_only_enabled" {
 variable "shared_access_key_enabled" {
   description = "Enable or disable shared access key for the storage account"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "min_tls_version" {
@@ -139,3 +139,47 @@ variable "enable_storage_diagnostics" {
   type        = bool
   default     = false
 }
+
+variable "enable_immutability_policy" {
+  description = "Enable account-level immutability policy (WORM)"
+  type        = bool
+  default     = false
+}
+
+variable "immutability_period_days" {
+  description = "The immutability period in days for the storage account"
+  type        = number
+  default     = 7
+}
+
+variable "immutability_policy_state" {
+  description = "The state of the immutability policy: Locked, Unlocked, or Disabled"
+  type        = string
+  default     = "Unlocked"
+  validation {
+    condition     = contains(["Locked", "Unlocked", "Disabled"], var.immutability_policy_state)
+    error_message = "Immutability policy state must be Locked, Unlocked, or Disabled."
+  }
+}
+
+variable "enable_container_delete_retention" {
+  description = "Enable container delete retention policy"
+  type        = bool
+  default     = false
+}
+
+variable "container_delete_retention_days" {
+  description = "Number of days to retain deleted containers"
+  type        = number
+  default     = 7
+}
+variable "allow_nested_items_to_be_public" {
+  description = "Allow nested items within the storage account to be public"
+  type        = bool
+  default     = false
+}
+# variable "prevent_storage_account_deletion" {
+#   description = "Prevent deletion of the storage account"
+#   type        = bool
+#   default     = true
+# }

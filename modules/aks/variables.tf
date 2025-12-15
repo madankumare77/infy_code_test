@@ -20,6 +20,12 @@ variable "vnet_subnet_id" {
   type        = string
 
 }
+variable "network_data_plane" {
+  type = string
+}
+variable "network_plugin_mode" {
+  type = string
+}
 
 # Existing variables...
 variable "default_node_pool" {

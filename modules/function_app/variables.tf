@@ -10,15 +10,17 @@ variable "function_apps" {
     sku_name                      = optional(string, "P1v2") # Default SKU for Premium v2
     private_endpoint_enabled      = optional(bool, false)    # Whether to create a private endpoint
     tags                          = optional(map(string), {})
+    storage_account_name          = optional(string, "")
+    #storage_account_access_key   = string
   }))
 }
 
 variable "rg_name" { type = string }
 variable "location" { type = string }
 variable "env" { type = string }
-variable "storage_account_access_key" {
-  type = string
-}
-variable "storage_account_name" {
-  type = string
-}
+# variable "storage_account_access_key" {
+#   type = string
+# }
+# variable "storage_account_name" {
+#   type = string
+# }

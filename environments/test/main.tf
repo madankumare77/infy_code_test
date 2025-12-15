@@ -1,13 +1,16 @@
-# module "resource_group" {
-#   source   = "../../modules/resource-group"
-#   rg_name  = var.env
-#   location = var.location
-# }
-
 # Reference existing resource group for the test environment
 data "azurerm_resource_group" "rg" {
   name = "madan-test"
 }
+
+# Management lock at RG scope
+resource "azurerm_management_lock" "rg_lock" {
+  name       = "rg-cannot-delete"
+  scope      = data.azurerm_resource_group.rg.id
+  lock_level = "CanNotDelete" # or "ReadOnly"
+  notes      = "Protect RG and all child resources from accidental deletion"
+}
+
 
 # Deploy virtual networks with subnets and network security configurations
 module "vnet" {
@@ -27,9 +30,32 @@ module "vnet" {
   subnet_configs         = each.value.subnet_configs
   enable_ddos_protection = each.value.enable_ddos_protection
   dns_servers            = each.value.dns_servers
-  nsg_default            = azurerm_network_security_group.nsg.id
+  tags                   = each.value.tags
+}
 
-  depends_on = [azurerm_network_security_group.nsg]
+module "nsg" {
+  source     = "../../modules/nsg"
+  for_each   = var.enable_nsg ? local.nsg_configs : {}
+  nsg_name   = each.value.nsg_name
+  create_nsg = each.value.create_nsg
+  location   = each.value.location
+  rg_name    = each.value.rg_name
+}
+variable "enable_nsg" {
+  description = "Enable creation of Network Security Groups"
+  type        = bool
+  default     = true
+}
+
+
+module "private_dns_zone" {
+  source                = "../../modules/private_dns"
+  for_each              = var.enable_private_dns_zone ? local.private_dns_zones : {}
+  rg_name               = data.azurerm_resource_group.rg.name
+  vnet_id               = each.value.vnet_id
+  private_dns_zone_name = each.value.private_dns_zone_name
+  depends_on            = [module.vnet]
+
 }
 
 # Deploy storage accounts with private endpoints and diagnostic settings
@@ -59,50 +85,60 @@ module "storage_account" {
   enable_storage_diagnostics        = each.value.enable_storage_diagnostics
   log_categories                    = each.value.log_categories
   metric_categories                 = each.value.metric_categories
-  tags                              = each.value.tags
+  enable_immutability_policy        = each.value.enable_immutability_policy
+  immutability_period_days          = each.value.immutability_period_days
+  immutability_policy_state         = each.value.immutability_policy_state
+  enable_container_delete_retention = each.value.enable_container_delete_retention
+  container_delete_retention_days   = each.value.container_delete_retention_days
+  allow_nested_items_to_be_public   = each.value.allow_nested_items_to_be_public
+  private_dns_zone_id               = each.value.private_endpoint_enabled ? module.private_dns_zone["storage"].private_dns_zone_id : null
+  #prevent_storage_account_deletion = each.value.prevent_storage_account_deletion
+  tags = each.value.tags
 
   depends_on = [module.vnet, module.law]
 }
 
-# Deploy Azure Function Apps with VNet integration and storage account binding
+#Deploy Azure Function Apps with VNet integration and storage account binding
 module "function_app" {
-  source        = "../../modules/function_app"
-  function_apps = var.enable_function_app ? local.function_apps : {}
-  rg_name       = data.azurerm_resource_group.rg.name
-  location      = data.azurerm_resource_group.rg.location
-  env           = var.env
-  storage_account_name = module.storage_account["stcindclaims"].storage_account_name
-  storage_account_access_key = module.storage_account["stcindclaims"].primary_access_key
+  source                     = "../../modules/function_app"
+  function_apps              = var.enable_function_app ? local.function_apps : {}
+  rg_name                    = data.azurerm_resource_group.rg.name
+  location                   = data.azurerm_resource_group.rg.location
+  env                        = var.env
   log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
-  UserAssigned_identity = module.azure_identity["functionapp"].user_assigned_id
-
-  depends_on = [module.storage_account, module.azure_identity, module.law]
+  UserAssigned_identity      = module.azure_identity["functionapp"].user_assigned_id
+  depends_on                 = [module.storage_account, module.azure_identity, module.law]
 }
 
 # Deploy Azure Key Vaults with private endpoints and RBAC authorization
 module "kv" {
   for_each = var.enable_kv ? local.kv_configs : {}
 
-  source                        = "../../modules/kv"
-  name_prefix                   = each.key
-  rg_name                       = data.azurerm_resource_group.rg.name
-  location                      = data.azurerm_resource_group.rg.location
-  env                           = var.env
-  sku_name                      = each.value.sku_name
-  purge_protection_enabled      = each.value.purge_protection_enabled
-  soft_delete_retention_days    = each.value.soft_delete_retention_days
-  enable_rbac_authorization     = each.value.enable_rbac_authorization
-  subnet_id                     = each.value.subnet_id
-  vnet_id                       = each.value.vnet_id
-  log_analytics_workspace_id    = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
-  public_network_access_enabled = each.value.public_network_access_enabled
-  enable_kv_diagnostics         = each.value.enable_kv_diagnostics  
-  log_categories                = each.value.log_categories
-  metric_categories             = each.value.metric_categories
-  private_endpoint_enabled      = each.value.private_endpoint_enabled # Set to true if you want to enable private endpoint
-  tags                          = each.value.tags
-  use_existing_private_dns_zone = each.value.use_existing_private_dns_zone
-  create_private_dns_link       = each.value.create_private_dns_link
+  source                          = "../../modules/kv"
+  name_prefix                     = each.key
+  rg_name                         = data.azurerm_resource_group.rg.name
+  location                        = data.azurerm_resource_group.rg.location
+  env                             = var.env
+  sku_name                        = each.value.sku_name
+  purge_protection_enabled        = each.value.purge_protection_enabled
+  soft_delete_retention_days      = each.value.soft_delete_retention_days
+  enable_rbac_authorization       = each.value.enable_rbac_authorization
+  subnet_id                       = each.value.subnet_id
+  vnet_id                         = each.value.vnet_id
+  log_analytics_workspace_id      = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
+  public_network_access_enabled   = each.value.public_network_access_enabled
+  enable_kv_diagnostics           = each.value.enable_kv_diagnostics
+  log_categories                  = each.value.log_categories
+  metric_categories               = each.value.metric_categories
+  private_endpoint_enabled        = each.value.private_endpoint_enabled # Set to true if you want to enable private endpoint
+  tags                            = each.value.tags
+  use_existing_private_dns_zone   = each.value.use_existing_private_dns_zone
+  create_private_dns_link         = each.value.create_private_dns_link
+  enable_for_disk_encryption      = each.value.enable_for_disk_encryption
+  enabled_for_deployment          = each.value.enabled_for_deployment
+  enabled_for_template_deployment = each.value.enabled_for_template_deployment
+  private_dns_zone_id             = each.value.private_endpoint_enabled ? module.private_dns_zone["kv"].private_dns_zone_id : null
+  #prevent_kv_deletion             = each.value.prevent_kv_deletion 
 
   depends_on = [module.vnet, module.law]
 }
@@ -129,6 +165,8 @@ module "aks" {
   additional_node_pools      = each.value.additional_node_pools
   aks_dns_service_ip         = each.value.aks_dns_service_ip
   aks_service_cidr           = each.value.aks_service_cidr
+  network_data_plane         = each.value.network_data_plane
+  network_plugin_mode        = each.value.network_plugin_mode
   log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
   tags                       = each.value.tags
 
@@ -159,6 +197,7 @@ module "postgresql_flex" {
   metric_categories             = each.value.metric_categories
   tags                          = each.value.tags
   db_name                       = each.value.db_name
+  private_dns_zone_id           = var.enable_postgresql_flex ? module.private_dns_zone["postgresql"].private_dns_zone_id : null
 
   depends_on = [module.vnet, module.law]
 }
@@ -208,8 +247,9 @@ module "redis" {
   enable_redis_diagnostics   = each.value.enable_redis_diagnostics
   log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
   #log_categories             = each.value.log_categories
-  metric_categories = each.value.metric_categories
-  tags              = each.value.tags
+  private_dns_zone_id      = each.value.private_endpoint_enabled ? module.private_dns_zone["redis"].private_dns_zone_id : null
+  private_endpoint_enabled = each.value.private_endpoint_enabled
+  tags                     = each.value.tags
 
   depends_on = [module.vnet, module.law]
 }
@@ -228,9 +268,10 @@ module "sqlmi" {
   sqlmi_db_name                = each.value.sqlmi_db_name
   enable_sqlmi_diagnostics     = each.value.enable_sqlmi_diagnostics
   log_analytics_workspace_id   = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
-  metric_categories           = each.value.metric_categories
-  network_security_group_name = each.value.network_security_group_name
-  tags                        = each.value.tags
+  metric_categories            = each.value.metric_categories
+  network_security_group_name  = each.value.network_security_group_name
+  short_term_retention_days    = each.value.short_term_retention_days
+  tags                         = each.value.tags
 
   depends_on = [module.vnet, module.law]
 }
@@ -253,19 +294,21 @@ module "law" {
 
 # Deploy Azure Document Intelligence (Form Recognizer) for document processing
 module "documentIntellegence" {
-  source                = "../../modules/documentIntelligence"
-  for_each              = var.enable_di_account ? local.di_account : {}
-  di_name_prefix        = each.value.di_name_prefix
-  env                   = var.env
-  location              = var.location
-  rg_name               = data.azurerm_resource_group.rg.name
-  sku_name              = each.value.sku_name
-  kind                  = each.value.kind
-  vnet_id               = each.value.vnet_id
-  subnet_id             = each.value.snet_id
-  custom_subdomain_name = each.value.custom_subdomain_name
+  source                     = "../../modules/documentIntelligence"
+  for_each                   = var.enable_di_account ? local.di_account : {}
+  di_name_prefix             = each.value.di_name_prefix
+  env                        = var.env
+  location                   = var.location
+  rg_name                    = data.azurerm_resource_group.rg.name
+  sku_name                   = each.value.sku_name
+  kind                       = each.value.kind
+  vnet_id                    = each.value.vnet_id
+  subnet_id                  = each.value.snet_id
+  custom_subdomain_name      = each.value.custom_subdomain_name
   log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
-  tags = each.value.tags
+  private_endpoint_enabled   = each.value.private_endpoint_enabled
+  private_dns_zone_id        = each.value.private_endpoint_enabled ? module.private_dns_zone["di"].private_dns_zone_id : null
+  tags                       = each.value.tags
 
   depends_on = [module.vnet, module.law]
 }
@@ -273,20 +316,21 @@ module "documentIntellegence" {
 
 # Deploy Azure OpenAI service with private endpoint and custom subdomain
 module "azure_openai" {
-  source                = "../../modules/azure_openai"
-  for_each              = var.enable_azure_openai ? local.azure_openai : {}
-  env                   = var.env
-  name_prefix           = each.key
-  location              = each.value.location
-  pe_location           = data.azurerm_resource_group.rg.location
-  rg_name               = data.azurerm_resource_group.rg.name
-  sku_name              = each.value.sku_name
-  kind                  = each.value.kind
-  custom_subdomain      = each.value.custom_subdomain
-  private_dns_zone_name = each.value.private_dns_zone_name
-  subnet_id             = each.value.subnet_id
-  vnet_id               = each.value.vnet_id
+  source                     = "../../modules/azure_openai"
+  for_each                   = var.enable_azure_openai ? local.azure_openai : {}
+  env                        = var.env
+  name_prefix                = each.key
+  location                   = each.value.location
+  pe_location                = data.azurerm_resource_group.rg.location
+  rg_name                    = data.azurerm_resource_group.rg.name
+  sku_name                   = each.value.sku_name
+  kind                       = each.value.kind
+  custom_subdomain           = each.value.custom_subdomain
+  subnet_id                  = each.value.subnet_id
+  vnet_id                    = each.value.vnet_id
   log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
+  private_endpoint_enabled   = each.value.private_endpoint_enabled
+  private_dns_zone_id        = each.value.private_endpoint_enabled ? module.private_dns_zone["openai"].private_dns_zone_id : null
   tags                       = each.value.tags
 
   depends_on = [module.vnet, module.law]
@@ -294,18 +338,20 @@ module "azure_openai" {
 
 # Deploy Azure Machine Learning workspace linked to Key Vault and Storage Account
 module "azure_machine_learning" {
-  source = "../../modules/azure-machine-learning"
-  for_each = var.enable_aml_workspace ? local.aml_workspace : {}
-  env      = var.env
-  location = var.location
-  rg_name  = data.azurerm_resource_group.rg.name
-  ml_workspace_nameprefix     = each.value.ml_workspace_nameprefix
-  vnet_id                       = each.value.vnet_id
-  subnet_id                     = each.value.subnet_id
-  key_vault_id = each.value.key_vault_id
-  storage_account_id = each.value.storage_account_id
-  application_insights_id = module.AppInsights.application_insights_id
+  source                     = "../../modules/azure-machine-learning"
+  for_each                   = var.enable_aml_workspace ? local.aml_workspace : {}
+  env                        = var.env
+  location                   = var.location
+  rg_name                    = data.azurerm_resource_group.rg.name
+  ml_workspace_nameprefix    = each.value.ml_workspace_nameprefix
+  vnet_id                    = each.value.vnet_id
+  subnet_id                  = each.value.subnet_id
+  key_vault_id               = each.value.key_vault_id
+  storage_account_id         = each.value.storage_account_id
+  application_insights_id    = module.AppInsights.application_insights_id
   log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
+  private_endpoint_enabled   = each.value.private_endpoint_enabled
+  private_dns_zone_id        = each.value.private_endpoint_enabled ? module.private_dns_zone["aml"].private_dns_zone_id : null
   tags                       = each.value.tags
 
   depends_on = [module.kv, module.storage_account, module.AppInsights, module.law]
@@ -313,23 +359,27 @@ module "azure_machine_learning" {
 
 # Deploy Azure Cosmos DB for MongoDB vCore with geo-replication
 module "azure_documentdb" {
-  source                 = "../../modules/azure_documentdb"
-  for_each               = var.enable_azure_documentdb ? local.azure_documentdb : {}
-  env                    = var.env
-  cluster_name_prefix    = each.key
-  location               = var.location
-  rg_name                = data.azurerm_resource_group.rg.name
-  administrator_username = each.value.administrator_username
-  administrator_password = each.value.administrator_password
-  shard_count            = each.value.shard_count
-  compute_tier           = each.value.compute_tier
-  high_availability_mode = each.value.high_availability_mode
-  storage_size_in_gb     = each.value.storage_size_in_gb
-  mongodb_version        = each.value.mongodb_version
-  geo_replica_location   = each.value.geo_replica_location
-  kv_id                  = module.kv["kv005-cind-claims"].kv_id
-  vnet_id                = each.value.vnet_id
-  subnet_id              = each.value.subnet_id
+  source                   = "../../modules/azure_documentdb"
+  for_each                 = var.enable_azure_documentdb ? local.azure_documentdb : {}
+  env                      = var.env
+  cluster_name_prefix      = each.key
+  location                 = var.location
+  rg_name                  = data.azurerm_resource_group.rg.name
+  administrator_username   = each.value.administrator_username
+  administrator_password   = each.value.administrator_password
+  shard_count              = each.value.shard_count
+  compute_tier             = each.value.compute_tier
+  high_availability_mode   = each.value.high_availability_mode
+  storage_size_in_gb       = each.value.storage_size_in_gb
+  mongodb_version          = each.value.mongodb_version
+  geo_replica_location     = each.value.geo_replica_location
+  kv_id                    = module.kv["kv005-cind-claims"].kv_id
+  vnet_id                  = each.value.vnet_id
+  subnet_id                = each.value.subnet_id
+  private_dns_zone_id      = each.value.private_endpoint_enabled ? module.private_dns_zone["cosmosdb"].private_dns_zone_id : null
+  private_endpoint_enabled = each.value.private_endpoint_enabled
+
+  tags = each.value.tags
 
   depends_on = [module.kv, module.vnet]
 }
@@ -342,8 +392,47 @@ module "azure_identity" {
   env           = var.env
   location      = var.location
   rg_name       = data.azurerm_resource_group.rg.name
+  tags          = each.value.tags
 
   depends_on = [module.vnet]
+}
+
+# Deploy Cosmos DB with MongoDB API and private endpoint
+module "cosmosdb" {
+  source                = "../../modules/cosmosdb"
+  for_each              = var.enable_cosmos ? local.cosmos_configs : {}
+  env                   = var.env
+  cosmosdb_name_prefix  = "cosdb01-cind-claims-test"
+  location              = var.location
+  rg_name               = data.azurerm_resource_group.rg.name
+  offer_type            = each.value.offer_type
+  cosmos_kind           = each.value.cosmos_kind
+  geo_location1         = each.value.geo_location1
+  vnet_id               = each.value.vnet_id
+  subnet_id             = each.value.subnet_id
+  UserAssigned_identity = each.value.UserAssigned_identity
+  #cosmosdb_name         = "mongodb"
+  log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
+  tags                       = each.value.tags
+  private_endpoint_enabled   = each.value.private_endpoint_enabled
+  private_dns_zone_id        = each.value.private_endpoint_enabled ? module.private_dns_zone["cosmosdb"].private_dns_zone_id : null
+  depends_on                 = [module.azure_identity, module.vnet, module.law]
+}
+
+# Deploy Application Insights for application performance monitoring
+module "AppInsights" {
+  source                     = "../../modules/appinsights"
+  name_prefix                = "appinsight-claims-test"
+  env                        = var.env
+  location                   = var.location
+  rg_name                    = data.azurerm_resource_group.rg.name
+  log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
+  tags = {
+    Description = "Pre-Prod Application Insights"
+    LAW         = "pre-prod-law"
+  }
+
+  depends_on = [module.law]
 }
 
 # locals {
@@ -372,46 +461,21 @@ module "azure_identity" {
 #   subnet_id                      = each.value.subnet_id
 # }
 
-# Default network security group for IaaS resources
-resource "azurerm_network_security_group" "nsg" {
-  #for_each            = { for snet_key, snet_value in var.subnet_configs : snet_key => snet_value if snet_value.create_nsg }
-  name                = "nsg-cind-iaas-default"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
-}
 
-# Deploy Cosmos DB with MongoDB API and private endpoint
-module "cosmosdb" {
-  source = "../../modules/cosmosdb"
-  for_each = var.enable_cosmos ? local.cosmos_configs : {}
-  env      = var.env
-  cosmosdb_name_prefix = "cosdb01-cind-claims-test"
-  location = var.location
-  rg_name  = data.azurerm_resource_group.rg.name
-  offer_type = each.value.offer_type
-  cosmos_kind = each.value.cosmos_kind
-  geo_location1 = each.value.geo_location1
-  vnet_id = each.value.vnet_id
-  subnet_id = each.value.subnet_id
-  UserAssigned_identity = each.value.UserAssigned_identity
-  #cosmosdb_name         = "mongodb"
-  log_analytics_workspace_id        = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
-  tags = each.value.tags
-
-  depends_on = [module.azure_identity, module.vnet, module.law]
-}
-
-# Deploy Application Insights for application performance monitoring
-module "AppInsights" {
-  source                     = "../../modules/appinsights"
-  name_prefix = "appinsight-claims-test"
-  env                        = var.env
-  location                   = var.location
-  rg_name                    = data.azurerm_resource_group.rg.name
-  log_analytics_workspace_id = var.enable_log_analytics_workspace ? module.law[0].log_analytics_workspace_id : ""
-
-  depends_on = [module.law]
-}
+# module "rbac1" {
+#   source               = "../../rbac"
+#   scope                = module.kv["kv005-cind-claims"].key_vault_id
+#   principal_id         = module.conn_user_assigned_identity.principal_id
+#   role_definition_name = "Key Vault Secrets User"
+#   depends_on           = [module.conn_keyvault_module, module.conn_user_assigned_identity]
+# }
+# module "rbac2" {
+#   source               = "../../rbac"
+#   scope                = module.conn_keyvault_module["kv-sao-conn-eus-001"].key_vault_id
+#   principal_id         = module.conn_user_assigned_identity.principal_id
+#   role_definition_name = "Key Vault Crypto User"
+#   depends_on           = [module.conn_keyvault_module, module.conn_user_assigned_identity]
+# }
 
 
 # module "vnet_peering" {

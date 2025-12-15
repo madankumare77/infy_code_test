@@ -25,7 +25,7 @@ resource "azurerm_postgresql_flexible_server" "this" {
   public_network_access_enabled = var.public_network_access_enabled
 
   delegated_subnet_id = var.subnet_id
-  private_dns_zone_id = azurerm_private_dns_zone.example.id #required when setting a delegated_subnet_id
+  private_dns_zone_id = var.private_dns_zone_id #required when setting a delegated_subnet_id
 
   depends_on = [var.subnet_id]
 
@@ -38,18 +38,6 @@ resource "azurerm_postgresql_flexible_server" "this" {
   )
 }
 
-resource "azurerm_private_dns_zone" "example" {
-  name                = "privatelink.postgres.database.azure.com"
-  resource_group_name = var.rg_name
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "example" {
-  name                  = format("%s-%s-link", var.env, var.psql_server_name_prefix)
-  private_dns_zone_name = azurerm_private_dns_zone.example.name
-  virtual_network_id    = var.vnet_id
-  resource_group_name   = var.rg_name
-  depends_on            = [var.vnet_id]
-}
 
 resource "azurerm_postgresql_flexible_server_database" "db" {
   for_each  = toset(var.db_name)
@@ -70,4 +58,8 @@ module "postgres_diag" {
 
 data "azurerm_client_config" "current" {}
 
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone to link the Private Endpoint to."
+  type        = string
+}
 

@@ -19,8 +19,10 @@ variable "rg_name" {
 variable "subnet_configs" {
   description = "A map of subnet configurations for the virtual network"
   type = map(object({
-    address_prefix     = string
-    create_nsg         = optional(bool, false)
+    address_prefix = string
+    create_nsg     = optional(bool, false)
+    # Optional: attach an existing NSG by id to the subnet
+    nsg_id             = optional(string, null)
     service_endpoints  = optional(list(string), [])
     create_route_table = optional(bool, false)
     delegation = optional(object({
@@ -55,6 +57,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "nsg_default" {
-  type = string  
-}
+# variable "nsg_default" {
+#   type = string  
+# }

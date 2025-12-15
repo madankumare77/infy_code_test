@@ -7,6 +7,6 @@ variable "vnet_id" { type = string }
 variable "key_vault_id" { type = string }
 variable "storage_account_id" { type = string }
 variable "application_insights_id" {
-  type = string
+  type    = string
   default = null
 }

@@ -27,6 +27,7 @@ resource "azurerm_redis_cache" "redis" {
 }
 
 resource "azurerm_private_endpoint" "redis_pe" {
+  count               = var.private_endpoint_enabled ? 1 : 0
   name                = "pvt-endpoint-${var.redis_name_prefix}"
   location            = var.location
   resource_group_name = var.rg_name
@@ -40,22 +41,10 @@ resource "azurerm_private_endpoint" "redis_pe" {
   }
   private_dns_zone_group {
     name                 = "default"
-    private_dns_zone_ids = [azurerm_private_dns_zone.dns.id]
+    private_dns_zone_ids = [var.private_dns_zone_id]
   }
 }
 
-resource "azurerm_private_dns_zone" "dns" {
-  name                = "privatelink.redis.cache.windows.net"
-  resource_group_name = var.rg_name
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "dnslink" {
-  name                  = "redis-vnet-link"
-  resource_group_name   = var.rg_name
-  private_dns_zone_name = azurerm_private_dns_zone.dns.name
-  virtual_network_id    = var.vnet_id
-  registration_enabled  = false
-}
 
 module "redis_diag" {
   count                      = var.enable_redis_diagnostics ? 1 : 0
@@ -65,4 +54,13 @@ module "redis_diag" {
   log_analytics_workspace_id = var.log_analytics_workspace_id
   log_categories             = var.log_categories
   metric_categories          = var.metric_categories
+}
+
+variable "private_dns_zone_id" {
+  description = "The ID of the Private DNS Zone to link the Private Endpoint to."
+  type        = string
+}
+variable "private_endpoint_enabled" {
+  description = "The name prefix for the Cognitive Account"
+  type        = string
 }
