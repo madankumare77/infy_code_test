@@ -39,6 +39,10 @@ jobs:
 
       - name: Terraform init (AAD backend)
         working-directory: ${{ env.TF_WORKDIR }}
+        env:
+          ARM_TENANT_ID:        ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID:  ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+          ARM_CLIENT_ID:        ${{ secrets.TEST_AZURE_CLIENT_ID }}
         run: |
           terraform init \
             -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
@@ -46,6 +50,7 @@ jobs:
             -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
             -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
             -backend-config="use_azuread_auth=true"
+
 
       - name: Terraform validate
         working-directory: ${{ env.TF_WORKDIR }}
