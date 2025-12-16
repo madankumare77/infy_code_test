@@ -56,12 +56,6 @@ jobs:
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform validate
 
-
-      # - name: Terraform plan (test)
-      #   working-directory: ${{ env.TF_WORKDIR }}
-      #   run: terraform plan -out=tfplan.bin
-
-
       - name: Terraform plan (test)
         working-directory: ${{ env.TF_WORKDIR }}
         run: |
