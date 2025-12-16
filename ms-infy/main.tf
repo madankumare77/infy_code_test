@@ -24,6 +24,7 @@ locals {
 # Log Analytics: create OR existing
 # Create uses AVM module (confirmed by AVM TF labs). [1](https://learn.microsoft.com/en-us/samples/azure-samples/avm-terraform-labs/avm-terraform-labs/)
 ########################################
+
 module "law_created" {
   source = "Azure/avm-res-operationalinsights-workspace/azurerm"
   count  = var.log_analytics.create ? 1 : 0
@@ -31,10 +32,13 @@ module "law_created" {
   name                = var.log_analytics.name
   resource_group_name = local.rg_name
   location            = coalesce(try(var.log_analytics.location, null), local.rg_location)
-  sku                 = var.log_analytics.sku
-  retention_in_days   = var.log_analytics.retention_in_days
-  tags                = merge(var.tags, try(var.log_analytics.tags, {}))
+
+  # NOTE:
+  # This AVM module version doesn't accept azurerm-native args like "sku" or "retention_in_days".
+  # We'll rely on module defaults unless you map the module-specific variable names.
+  tags = merge(var.tags, try(var.log_analytics.tags, {}))
 }
+
 
 data "azurerm_log_analytics_workspace" "law_existing" {
   count               = var.log_analytics.create ? 0 : 1

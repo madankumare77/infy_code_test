@@ -45,8 +45,8 @@ log_analytics = {
 
   # Optional:
   # location = "centralindia"
-  sku  = "PerGB2018" # Common: PerGB2018
-  tags = { monitoring = "enabled" }
+  # sku  = "PerGB2018" # Common: PerGB2018
+  # tags = { monitoring = "enabled" }
 }
 
 
