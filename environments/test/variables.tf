@@ -89,12 +89,37 @@ variable "enable_cosmos" {
 variable "enable_private_dns_zone" {
   description = "Enable creation of Private DNS Zone"
   type        = bool
-  default     = true
+  default     = false
+}
+variable "enable_appinsights" {
+  description = "Enable or disable Application Insights module"
+  type        = bool
+  default     = false  
 }
 
+variable "enable_nsg" {
+  description = "Enable creation of Network Security Groups"
+  type        = bool
+  default     = false
+}
+variable "enable_rbac" {
+  type = bool
+  default = false
+}
+variable "enable_diagnostics_settings" {
+  type = bool
+  default = false
+}
+variable "enable_private_endpoints" {
+  type = bool
+  default = false
+}
+variable "rg_lock_enable" {
+  type = bool
+  default = false
+}
 
-variable "key_vault_id" {
-  description = "Resource ID of the Key Vault for AML workspace"
-  type        = string
-  default     = ""
+variable "enable_nsg_association" {
+  type = bool
+  default = true
 }

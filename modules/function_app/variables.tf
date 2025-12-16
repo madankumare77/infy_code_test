@@ -11,6 +11,8 @@ variable "function_apps" {
     private_endpoint_enabled      = optional(bool, false)    # Whether to create a private endpoint
     tags                          = optional(map(string), {})
     storage_account_name          = optional(string, "")
+    log_analytics_workspace_id    = optional(string, "")
+    UserAssigned_identity         = optional(string, "")
     #storage_account_access_key   = string
   }))
 }

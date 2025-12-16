@@ -44,31 +44,29 @@ resource "azurerm_private_endpoint" "di_pe" {
     is_manual_connection = false
   }
 
-  private_dns_zone_group {
-    name                 = "di-dns-group"
-    private_dns_zone_ids = [var.private_dns_zone_id]
+  dynamic "private_dns_zone_group" {
+    for_each = var.private_dns_zone_id != "" ? [1] : []
+    content {
+      name                 = "default"
+      private_dns_zone_ids = [var.private_dns_zone_id]
+    }
   }
 }
 
-########################################################
-# outputs.tf
-########################################################
-output "di_endpoint" {
-  description = "Document Intelligence endpoint (public hostname that resolves to the PE inside your VNet)."
-  value       = azurerm_cognitive_account.di.endpoint
-}
 
 data "azurerm_monitor_diagnostic_categories" "cats" {
+  count = var.enable_diagnostics ? 1 : 0
   resource_id = azurerm_cognitive_account.di.id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "diag" {
+  count = var.enable_diagnostics ? 1 : 0
   name                       = "cognitive-diag-to-law"
   target_resource_id         = azurerm_cognitive_account.di.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
   dynamic "enabled_log" {
-    for_each = data.azurerm_monitor_diagnostic_categories.cats.log_category_types
+    for_each = data.azurerm_monitor_diagnostic_categories.cats[0].log_category_types
     content {
       category = enabled_log.value
     }
@@ -76,7 +74,7 @@ resource "azurerm_monitor_diagnostic_setting" "diag" {
 
   # Enable all metric categories if present
   dynamic "enabled_metric" {
-    for_each = data.azurerm_monitor_diagnostic_categories.cats.metrics
+    for_each = data.azurerm_monitor_diagnostic_categories.cats[0].metrics
     content {
       category = enabled_metric.value
     }
@@ -99,4 +97,21 @@ variable "private_dns_zone_id" {
 variable "private_endpoint_enabled" {
   description = "The name prefix for the Cognitive Account"
   type        = string
+}
+variable "enable_diagnostics" {
+  description = "Enable diagnostic settings for the Key Vault"
+  type        = bool
+  default     = false
+}
+
+########################################################
+# outputs.tf
+########################################################
+output "di_endpoint" {
+  description = "Document Intelligence endpoint (public hostname that resolves to the PE inside your VNet)."
+  value       = azurerm_cognitive_account.di.endpoint
+}
+
+output "di_id" {
+  value       = azurerm_cognitive_account.di.id
 }

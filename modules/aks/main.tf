@@ -5,8 +5,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
   dns_prefix                        = var.aks_name_prefix
   kubernetes_version                = var.kubernetes_version
   private_cluster_enabled           = var.private_cluster
-  role_based_access_control_enabled = true
-  local_account_disabled            = true #This should be set to true and add the AAD group to the role based access control
+  role_based_access_control_enabled = var.role_based_access_control_enabled
+  local_account_disabled            = var.local_account_disabled #This should be set to true and add the AAD group to the role based access control
   azure_active_directory_role_based_access_control {
     azure_rbac_enabled     = true
     admin_group_object_ids = [azuread_group.aks_admins.object_id]
@@ -28,9 +28,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
     #temporary_name_for_rotation = "tempnp1"
   }
   identity {
-    type         = var.aks_identity_type #"UserAssigned"
+    type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.this.id]
   }
+
 
   network_profile {
     network_plugin      = var.network_plugin
@@ -53,8 +54,13 @@ resource "azurerm_kubernetes_cluster" "aks" {
     }
   )
 }
+# locals {
+#   uai_id = trim(var.UserAssigned_identity) != "" ? var.UserAssigned_identity : azurerm_user_assigned_identity.this[0].id
+# }
+
 
 resource "azurerm_user_assigned_identity" "this" {
+  #count               = trim(var.UserAssigned_identity) == "" ? 1 : 0
   name                = "${var.aks_name_prefix}-id"
   location            = var.location
   resource_group_name = var.rg_name
@@ -100,4 +106,12 @@ module "aks_diag" {
   log_analytics_workspace_id = var.log_analytics_workspace_id
   log_categories             = ["kube-audit", "kube-apiserver", "kube-controller-manager", "kube-scheduler"]
   metric_categories          = ["AllMetrics"]
+}
+
+
+output "aks_id" {
+  value = azurerm_kubernetes_cluster.aks.id 
+}
+output "aks_user_identity_principal_id" {
+  value = azurerm_user_assigned_identity.this.principal_id
 }

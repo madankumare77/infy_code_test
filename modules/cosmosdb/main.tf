@@ -34,10 +34,18 @@ resource "azurerm_cosmosdb_account" "cosmosdb" {
 
   analytical_storage_enabled = false
 
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [var.UserAssigned_identity]
+  dynamic "identity" {
+    for_each = var.UserAssigned_identity != "" ? [var.UserAssigned_identity] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = [var.UserAssigned_identity]
+    }
   }
+
+  # identity {
+  #   type         = "UserAssigned"
+  #   identity_ids = [var.UserAssigned_identity]
+  # }
 
   tags = merge(
     var.tags,
@@ -81,30 +89,23 @@ resource "azurerm_private_endpoint" "cosmos_pe" {
   resource_group_name = var.rg_name
   subnet_id           = var.subnet_id
 
-  private_dns_zone_group {
-    name                 = "default"
-    private_dns_zone_ids = [var.private_dns_zone_id]
-  }
-
   private_service_connection {
     name                           = "pvt-endpoint-${azurerm_cosmosdb_account.cosmosdb.name}"
     private_connection_resource_id = azurerm_cosmosdb_account.cosmosdb.id
     is_manual_connection           = false
     subresource_names              = ["MongoDB"]
   }
-}
-
-
-# Outputs
-output "cosmosdb_endpoint" {
-  value = azurerm_cosmosdb_account.cosmosdb.endpoint
-}
-
-output "cosmosdb_primary_key" {
-  value = azurerm_cosmosdb_account.cosmosdb.primary_key
+  dynamic "private_dns_zone_group" {
+    for_each = var.private_dns_zone_id != "" ? [1] : []
+    content {
+      name                 = "default"
+      private_dns_zone_ids = [var.private_dns_zone_id]
+    }
+  }
 }
 
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
+  count = var.enable_diagnostics ? 1 : 0
   name                       = "cosmos-diag"
   target_resource_id         = azurerm_cosmosdb_account.cosmosdb.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
@@ -148,4 +149,22 @@ variable "private_dns_zone_id" {
 variable "private_endpoint_enabled" {
   description = "The name prefix for the Cognitive Account"
   type        = string
+}
+variable "enable_diagnostics" {
+  description = "Enable diagnostic settings for the Key Vault"
+  type        = bool
+  default     = false
+}
+
+
+# Outputs
+output "cosmosdb_id" {
+  value =  azurerm_cosmosdb_account.cosmosdb.id
+}
+output "cosmosdb_endpoint" {
+  value = azurerm_cosmosdb_account.cosmosdb.endpoint
+}
+
+output "cosmosdb_primary_key" {
+  value = azurerm_cosmosdb_account.cosmosdb.primary_key
 }

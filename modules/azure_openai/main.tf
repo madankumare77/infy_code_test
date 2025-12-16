@@ -47,9 +47,12 @@ resource "azurerm_private_endpoint" "openai" {
   }
 
   # Bind the PE to the Private DNS zone for AOAI
-  private_dns_zone_group {
-    name                 = "openai-dns-group"
-    private_dns_zone_ids = [var.private_dns_zone_id]
+  dynamic "private_dns_zone_group" {
+    for_each = var.private_dns_zone_id != "" ? [1] : []
+    content {
+      name                 = "default"
+      private_dns_zone_ids = [var.private_dns_zone_id]
+    }
   }
 }
 variable "private_endpoint_enabled" {
@@ -136,26 +139,38 @@ variable "log_analytics_workspace_id" {
 
 
 data "azurerm_monitor_diagnostic_categories" "cog_cats" {
+  count = var.enable_diagnostics ? 1 : 0
   resource_id = azurerm_cognitive_account.preprod.id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "openai_diag" {
+  count = var.enable_diagnostics ? 1 : 0
   name                           = "aoai-diag-to-law"
   target_resource_id             = azurerm_cognitive_account.preprod.id
   log_analytics_workspace_id     = var.log_analytics_workspace_id
   log_analytics_destination_type = "AzureDiagnostics"
 
   dynamic "enabled_log" {
-    for_each = data.azurerm_monitor_diagnostic_categories.cog_cats.log_category_types
+    for_each = data.azurerm_monitor_diagnostic_categories.cog_cats[0].log_category_types
     content {
       category = enabled_log.value
     }
   }
 
   dynamic "enabled_metric" {
-    for_each = data.azurerm_monitor_diagnostic_categories.cog_cats.metrics
+    for_each = data.azurerm_monitor_diagnostic_categories.cog_cats[0].metrics
     content {
       category = enabled_metric.value
     }
   }
+}
+
+variable "enable_diagnostics" {
+  description = "Enable diagnostic settings for the Key Vault"
+  type        = bool
+  default     = false
+}
+
+output "openai_id" {
+  value = azurerm_cognitive_account.preprod.id 
 }

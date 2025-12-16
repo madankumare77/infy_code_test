@@ -122,17 +122,17 @@ variable "log_analytics_workspace_id" {
   default     = ""
 }
 
-variable "log_categories" {
-  description = "List of log categories to enable for the storage account diagnostic settings"
-  type        = list(string)
-  default     = ["StorageRead", "StorageWrite"]
-}
+# variable "log_categories" {
+#   description = "List of log categories to enable for the storage account diagnostic settings"
+#   type        = list(string)
+#   default     = ["StorageRead", "StorageWrite"]
+# }
 
-variable "metric_categories" {
-  description = "List of metric categories to enable for the storage account diagnostic settings"
-  type        = list(string)
-  default     = ["AllMetrics"]
-}
+# variable "metric_categories" {
+#   description = "List of metric categories to enable for the storage account diagnostic settings"
+#   type        = list(string)
+#   default     = ["AllMetrics"]
+# }
 
 variable "enable_storage_diagnostics" {
   description = "Enable or disable storage diagnostics"

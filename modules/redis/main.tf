@@ -64,3 +64,7 @@ variable "private_endpoint_enabled" {
   description = "The name prefix for the Cognitive Account"
   type        = string
 }
+
+output "redis_id" {
+  value = azurerm_redis_cache.redis.id 
+}

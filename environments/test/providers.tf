@@ -14,7 +14,10 @@ provider "azurerm" {
     resource_group {
       prevent_deletion_if_contains_resources = true
     }
+
   }
+  # subscription_id = "a0b36c09-679f-4dfb-829f-3b6685282dae"
+  # tenant_id = "16b3c013-d300-468d-ac64-7eda0820b6d3"
 }
 
 # Discover current Azure tenant from the authenticated CLI context

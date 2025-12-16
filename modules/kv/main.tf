@@ -22,7 +22,7 @@ resource "azurerm_key_vault" "kv" {
 
   lifecycle {
     #prevent_destroy = var.prevent_kv_deletion
-    prevent_destroy = true
+    prevent_destroy = false
   }
 
   tags = merge(
@@ -47,50 +47,37 @@ resource "azurerm_private_endpoint" "pe" {
     is_manual_connection           = false
     subresource_names              = ["Vault"]
   }
-  private_dns_zone_group {
-    name                 = "default"
-    private_dns_zone_ids = [var.private_dns_zone_id]
+  dynamic "private_dns_zone_group" {
+    for_each = var.private_dns_zone_id != "" ? [1] : []
+    content {
+      name                 = "default"
+      private_dns_zone_ids = [var.private_dns_zone_id]
+    }
   }
 }
 
 
 module "kv_diag" {
-  count                      = var.enable_kv_diagnostics ? 1 : 0
+  count = var.enable_diagnostics ? 1 : 0
+  #count                      = var.log_analytics_workspace_id != "" ? 1 : 0
   source                     = "../../modules/diagnostic_setting"
   name                       = format("%s-%s-diagnostic", var.env, azurerm_key_vault.kv.name)
   target_resource_id         = azurerm_key_vault.kv.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
   log_categories             = var.log_categories
   metric_categories          = var.metric_categories
+  depends_on = [ var.log_analytics_workspace_id ]
 }
 
-
-data "azuread_client_config" "current" {}
 data "azurerm_client_config" "current" {}
-
-// Optionally use an existing private DNS zone instead of creating one
-data "azurerm_private_dns_zone" "existing" {
-  count               = var.private_endpoint_enabled && var.use_existing_private_dns_zone ? 1 : 0
-  name                = "privatelink.vaultcore.azure.net"
-  resource_group_name = var.rg_name
-}
 
 
 output "kv_id" {
   value = azurerm_key_vault.kv.id
 }
 
-variable "use_existing_private_dns_zone" {
-  description = "If true, use an existing privatelink.vaultcore.azure.net DNS zone in the RG instead of creating a new one."
-  type        = bool
-  default     = false
-}
-
-variable "create_private_dns_link" {
-  type    = bool
-  default = true
-}
 variable "private_dns_zone_id" {
   description = "The ID of the Private DNS Zone to link the Private Endpoint to."
   type        = string
+  default = ""
 }

@@ -101,3 +101,13 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+variable "UserAssigned_identity" {
+  type = string
+  default = ""
+}
+variable "role_based_access_control_enabled" {
+  type = bool
+}
+variable "local_account_disabled" {
+  type = string
+}

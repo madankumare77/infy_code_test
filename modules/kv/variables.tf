@@ -94,7 +94,7 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
-variable "enable_kv_diagnostics" {
+variable "enable_diagnostics" {
   description = "Enable diagnostic settings for the Key Vault"
   type        = bool
   default     = false

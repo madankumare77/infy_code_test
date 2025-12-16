@@ -57,6 +57,13 @@ resource "azurerm_windows_function_app" "windows" {
   }
   virtual_network_subnet_id = each.value.subnet_id
   tags                      = var.function_apps[each.key].tags
+  dynamic "identity" {
+    for_each = each.value.UserAssigned_identity != "" ? [each.value.UserAssigned_identity] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = [each.value.UserAssigned_identity]
+    }
+  }
 }
 
 resource "azurerm_linux_function_app" "linux" {
@@ -85,10 +92,15 @@ resource "azurerm_linux_function_app" "linux" {
     WEBSITE_RUN_FROM_PACKAGE = each.value.runtime_stack
   }
   virtual_network_subnet_id = each.value.subnet_id
-  identity {
-    type         = "UserAssigned"
-    identity_ids = [var.UserAssigned_identity]
+
+  dynamic "identity" {
+    for_each = each.value.UserAssigned_identity != "" ? [each.value.UserAssigned_identity] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = [each.value.UserAssigned_identity]
+    }
   }
+
   tags = merge(
     var.tags,
     {
@@ -98,16 +110,17 @@ resource "azurerm_linux_function_app" "linux" {
 }
 
 data "azurerm_monitor_diagnostic_categories" "func_cats" {
-  for_each    = azurerm_linux_function_app.linux
+  for_each                      = { for k, v in var.function_apps : k => v if v.enable_diagnostics }
   resource_id = each.value.id
 }
 
 # Only enable the 'AppServiceAuditLogs' category (Access Audit)
 resource "azurerm_monitor_diagnostic_setting" "func_diag_audit" {
-  for_each                   = azurerm_linux_function_app.linux
+  #for_each                   = { azurerm_linux_function_app.linux : each.key => each.value if each.value.log_analytics_workspace_id != "" }
+  for_each                      = { for k, v in var.function_apps : k => v if v.enable_diagnostics }
   name                       = "func-audit-to-law"
   target_resource_id         = each.value.id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
+  log_analytics_workspace_id = each.value.log_analytics_workspace_id
 
   dynamic "enabled_log" {
     for_each = [
@@ -127,12 +140,12 @@ resource "azurerm_monitor_diagnostic_setting" "func_diag_audit" {
     }
   }
 }
-variable "log_analytics_workspace_id" {
-  type = string
-}
-variable "UserAssigned_identity" {
-  type = string
-}
+# variable "log_analytics_workspace_id" {
+#   type = string
+# }
+# variable "UserAssigned_identity" {
+#   type = string
+# }
 variable "tags" {
   description = "A map of tags to assign to the storage account"
   type        = map(string)

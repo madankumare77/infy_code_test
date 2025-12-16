@@ -32,9 +32,12 @@ resource "azurerm_private_endpoint" "aml_pe" {
     subresource_names              = ["amlworkspace"]
     is_manual_connection           = false
   }
-  private_dns_zone_group {
-    name                 = "aml-dns-group"
-    private_dns_zone_ids = [var.private_dns_zone_id]
+  dynamic "private_dns_zone_group" {
+    for_each = var.private_dns_zone_id != "" ? [1] : []
+    content {
+      name                 = "default"
+      private_dns_zone_ids = [var.private_dns_zone_id]
+    }
   }
 }
 
@@ -49,24 +52,26 @@ variable "private_dns_zone_id" {
 
 
 data "azurerm_monitor_diagnostic_categories" "aml_cats" {
+  count = var.enable_diagnostics ? 1 : 0
   resource_id = azurerm_machine_learning_workspace.example.id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "aml_diag" {
+  count = var.enable_diagnostics ? 1 : 0
   name                           = "aml-diag-to-law"
   target_resource_id             = azurerm_machine_learning_workspace.example.id
   log_analytics_workspace_id     = var.log_analytics_workspace_id
   log_analytics_destination_type = "Dedicated"
 
   dynamic "enabled_log" {
-    for_each = data.azurerm_monitor_diagnostic_categories.aml_cats.log_category_types
+    for_each = data.azurerm_monitor_diagnostic_categories.aml_cats[0].log_category_types
     content {
       category = enabled_log.value
     }
   }
 
   dynamic "enabled_metric" {
-    for_each = data.azurerm_monitor_diagnostic_categories.aml_cats.metrics
+    for_each = data.azurerm_monitor_diagnostic_categories.aml_cats[0].metrics
     content {
       category = enabled_metric.value
     }
@@ -79,4 +84,13 @@ variable "tags" {
   description = "A map of tags to assign to the storage account"
   type        = map(string)
   default     = {}
+}
+variable "enable_diagnostics" {
+  description = "Enable diagnostic settings for the Key Vault"
+  type        = bool
+  default     = false
+}
+
+output "aml_id" {
+  value = azurerm_machine_learning_workspace.example.id
 }

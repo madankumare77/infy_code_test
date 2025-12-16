@@ -41,14 +41,13 @@ resource "azurerm_subnet" "subnet" {
       }
     }
   }
-
 }
 
 
 # resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
 #   for_each = {
 #     for snet_key, snet_value in var.subnet_configs : snet_key => snet_value
-#     if snet_value.nsg_id != null && snet_value.nsg_id != ""
+#     if snet_value.nsg_id != null
 #   }
 #   subnet_id                 = azurerm_subnet.subnet[each.key].id
 #   network_security_group_id = each.value.nsg_id

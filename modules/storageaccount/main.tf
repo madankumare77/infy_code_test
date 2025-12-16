@@ -1,5 +1,5 @@
 resource "azurerm_storage_account" "storage" {
-  name                              = lower("${var.storage_account_name}${var.env}")
+  name                              = lower("${var.storage_account_name}")
   resource_group_name               = var.rg_name
   location                          = var.location
   account_tier                      = var.account_tier             #"Standard"
@@ -71,9 +71,25 @@ resource "azurerm_storage_account" "storage" {
   )
 }
 
+# resource "azurerm_storage_share" "example" {
+#   name               = "sharename"
+#   storage_account_id = azurerm_storage_account.storage.id
+#   quota              = 50
+
+#   # acl {
+#   #   id = "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI"
+
+#   #   access_policy {
+#   #     permissions = "rwdl"
+#   #     start       = "2019-07-02T09:38:21Z"
+#   #     expiry      = "2019-07-02T10:38:21Z"
+#   #   }
+#   # }
+# }
 
 
 resource "azurerm_monitor_diagnostic_setting" "sa_to_law" {
+  count = var.enable_storage_diagnostics ? 1 : 0
   name                       = format("%s-%s-diagnostic", var.env, azurerm_storage_account.storage.name)
   target_resource_id         = azurerm_storage_account.storage.id
   log_analytics_workspace_id = var.log_analytics_workspace_id

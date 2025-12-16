@@ -33,17 +33,17 @@ resource "azurerm_mongo_cluster" "example_geo_replica" {
 }
 
 # Cosmos Mongo vCore Private DNS
-resource "azurerm_private_dns_zone" "cosmos_zone" {
-  name                = "privatelink.mongo.cosmos.azure.com"
-  resource_group_name = var.rg_name
-}
+# resource "azurerm_private_dns_zone" "cosmos_zone" {
+#   name                = "privatelink.mongo.cosmos.azure.com"
+#   resource_group_name = var.rg_name
+# }
 
-resource "azurerm_private_dns_zone_virtual_network_link" "cosmos_zone_link" {
-  name                  = "cosmos-zone-link"
-  private_dns_zone_name = azurerm_private_dns_zone.cosmos_zone.name
-  resource_group_name   = var.rg_name
-  virtual_network_id    = var.vnet_id
-}
+# resource "azurerm_private_dns_zone_virtual_network_link" "cosmos_zone_link" {
+#   name                  = "cosmos-zone-link"
+#   private_dns_zone_name = azurerm_private_dns_zone.cosmos_zone.name
+#   resource_group_name   = var.rg_name
+#   virtual_network_id    = var.vnet_id
+# }
 
 # Cosmos Mongo vCore Private Endpoint
 resource "azurerm_private_endpoint" "cosmos_pe" {
@@ -60,9 +60,12 @@ resource "azurerm_private_endpoint" "cosmos_pe" {
     is_manual_connection           = false
   }
 
-  private_dns_zone_group {
-    name                 = "cosmos-dns-group"
-    private_dns_zone_ids = [var.private_dns_zone_id]
+  dynamic "private_dns_zone_group" {
+    for_each = var.private_dns_zone_id != "" ? [1] : []
+    content {
+      name                 = "default"
+      private_dns_zone_ids = [var.private_dns_zone_id]
+    }
   }
 }
 
@@ -83,3 +86,7 @@ variable "private_endpoint_enabled" {
   default     = false
 }
 
+
+output "documentdb_id" {
+  value = azurerm_mongo_cluster.example.id
+}
