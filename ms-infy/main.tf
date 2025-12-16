@@ -16,7 +16,7 @@ data "azurerm_resource_group" "rg" {
 }
 
 locals {
-  rg_name     = var.resource_group.create ? azurerm_resource_group.rg[0].name     : data.azurerm_resource_group.rg[0].name
+  rg_name     = var.resource_group.create ? azurerm_resource_group.rg[0].name : data.azurerm_resource_group.rg[0].name
   rg_location = var.resource_group.create ? azurerm_resource_group.rg[0].location : data.azurerm_resource_group.rg[0].location
 }
 
@@ -60,9 +60,9 @@ resource "azurerm_application_insights" "appi" {
   application_type    = var.application_insights.application_type
   workspace_id        = local.law_id
 
-  retention_in_days   = var.application_insights.retention_in_days
-  sampling_percentage = var.application_insights.sampling_percentage
-  disable_ip_masking  = var.application_insights.disable_ip_masking
+  retention_in_days          = var.application_insights.retention_in_days
+  sampling_percentage        = var.application_insights.sampling_percentage
+  disable_ip_masking         = var.application_insights.disable_ip_masking
   internet_ingestion_enabled = var.application_insights.internet_ingestion_on
   internet_query_enabled     = var.application_insights.internet_query_on
 
@@ -184,7 +184,7 @@ locals {
 }
 
 resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
-  for_each = var.nsg_associations
+  for_each                  = var.nsg_associations
   subnet_id                 = local.subnet_id_by_key["${each.value.vnet_key}.${each.value.subnet_key}"]
   network_security_group_id = local.nsg_id_by_key[each.value.nsg_key]
 }
@@ -233,11 +233,11 @@ resource "azurerm_storage_account" "sa" {
   account_replication_type = each.value.account_replication_type
   access_tier              = try(each.value.access_tier, null)
 
-  min_tls_version           = try(each.value.advanced.min_tls_version, "TLS1_2")
-  enable_https_traffic_only = try(each.value.advanced.enable_https_traffic_only, true)
-  shared_access_key_enabled = try(each.value.advanced.shared_access_key_enabled, false)
-  allow_blob_public_access  = try(each.value.advanced.allow_blob_public_access, false)
-  allow_nested_items_to_be_public = try(each.value.advanced.allow_nested_items_to_be_public, false)
+  min_tls_version                   = try(each.value.advanced.min_tls_version, "TLS1_2")
+  enable_https_traffic_only         = try(each.value.advanced.enable_https_traffic_only, true)
+  shared_access_key_enabled         = try(each.value.advanced.shared_access_key_enabled, false)
+  allow_blob_public_access          = try(each.value.advanced.allow_blob_public_access, false)
+  allow_nested_items_to_be_public   = try(each.value.advanced.allow_nested_items_to_be_public, false)
   infrastructure_encryption_enabled = try(each.value.advanced.infrastructure_encryption_enabled, true)
 
   is_hns_enabled     = try(each.value.advanced.is_hns_enabled, false)
@@ -314,15 +314,15 @@ locals {
     for k, pe in var.private_endpoints :
     k => (
       try(pe.target_resource_id, null) != null ? pe.target_resource_id :
-      pe.target_kind == "storage"     ? azurerm_storage_account.sa[pe.target_key].id :
-      pe.target_kind == "keyvault"    ? azurerm_key_vault.kv[pe.target_key].id :
-      pe.target_kind == "loganalytics"? local.law_id :
+      pe.target_kind == "storage" ? azurerm_storage_account.sa[pe.target_key].id :
+      pe.target_kind == "keyvault" ? azurerm_key_vault.kv[pe.target_key].id :
+      pe.target_kind == "loganalytics" ? local.law_id :
       pe.target_kind == "appinsights" ? local.appi_id :
       null
     )
   }
 
-  invalid_pe = [ for k, pe in var.private_endpoints : k if local.pe_target_id[k] == null ]
+  invalid_pe = [for k, pe in var.private_endpoints : k if local.pe_target_id[k] == null]
 }
 
 resource "null_resource" "validate_pe" {

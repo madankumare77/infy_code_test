@@ -1,6 +1,6 @@
 
 variable "subscription_id" { type = string }
-variable "tenant_id"       { type = string }
+variable "tenant_id" { type = string }
 
 variable "tags" {
   type    = map(string)
@@ -50,14 +50,14 @@ variable "application_insights" {
 # Real Azure names are inside name=""
 variable "virtual_networks" {
   type = map(object({
-    create              = bool
-    name                = string
-    resource_group_name = optional(string)
-    location            = optional(string)
-    address_space       = optional(list(string))
-    dns_servers         = optional(list(string), [])
+    create                 = bool
+    name                   = string
+    resource_group_name    = optional(string)
+    location               = optional(string)
+    address_space          = optional(list(string))
+    dns_servers            = optional(list(string), [])
     enable_ddos_protection = optional(bool, false)
-    tags                = optional(map(string), {})
+    tags                   = optional(map(string), {})
 
     subnets = map(object({
       name              = string
@@ -129,8 +129,8 @@ variable "user_assigned_identities" {
 # Storage Account (Portal-tabs model)
 variable "storage_accounts" {
   type = map(object({
-    name     = string
-    location = optional(string)
+    name                     = string
+    location                 = optional(string)
     account_kind             = optional(string, "StorageV2")
     account_tier             = optional(string, "Standard")
     account_replication_type = string
@@ -159,8 +159,8 @@ variable "storage_accounts" {
     }), {})
 
     data_protection = optional(object({
-      versioning_enabled    = optional(bool, true)
-      change_feed_enabled   = optional(bool, false)
+      versioning_enabled  = optional(bool, true)
+      change_feed_enabled = optional(bool, false)
 
       blob_soft_delete = optional(object({
         enabled = optional(bool, true)
@@ -188,7 +188,7 @@ variable "key_vaults" {
     soft_delete_retention_days = optional(number, 7)
     purge_protection_enabled   = optional(bool, true)
 
-    enable_rbac_authorization  = optional(bool, true)
+    enable_rbac_authorization = optional(bool, true)
 
     networking = optional(object({
       public_network_access_enabled = optional(bool, false)
@@ -210,13 +210,13 @@ variable "private_endpoints" {
     vnet_key   = string
     subnet_key = string
 
-    target_kind = optional(string) # storage | keyvault | loganalytics | appinsights
-    target_key  = optional(string)
+    target_kind        = optional(string) # storage | keyvault | loganalytics | appinsights
+    target_key         = optional(string)
     target_resource_id = optional(string)
 
-    subresource_names     = list(string)
-    private_dns_zone_key  = string
-    tags                  = optional(map(string), {})
+    subresource_names    = list(string)
+    private_dns_zone_key = string
+    tags                 = optional(map(string), {})
   }))
   default = {}
 
