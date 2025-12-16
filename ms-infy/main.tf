@@ -246,7 +246,7 @@ resource "azurerm_storage_account" "sa" {
 
   min_tls_version                   = try(each.value.advanced.min_tls_version, "TLS1_2")
   shared_access_key_enabled         = try(each.value.advanced.shared_access_key_enabled, false)
-  https_traffic_only_enabled       = try(each.value.advanced.enable_https_traffic_only, true) 
+  https_traffic_only_enabled        = try(each.value.advanced.enable_https_traffic_only, true)
   allow_nested_items_to_be_public   = try(each.value.advanced.allow_nested_items_to_be_public, false)
   infrastructure_encryption_enabled = try(each.value.advanced.infrastructure_encryption_enabled, true)
 
