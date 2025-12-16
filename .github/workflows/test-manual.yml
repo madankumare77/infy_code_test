@@ -57,9 +57,19 @@ jobs:
         run: terraform validate
 
 
+      # - name: Terraform plan (test)
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: terraform plan -out=tfplan.bin
+
+
       - name: Terraform plan (test)
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform plan -out=tfplan.bin
+        run: |
+          terraform plan \
+            -var="subscription_id=${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}" \
+            -var="tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
+            -out=tfplan.bin
+      
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
