@@ -97,12 +97,12 @@ module "vnet_created" {
   source   = "Azure/avm-res-network-virtualnetwork/azurerm"
   for_each = local.vnets_to_create
 
-  name                = each.value.name
-  location            = each.value.location
+  name     = each.value.name
+  location = each.value.location
   #resource_group_name = local.rg_name
-  address_space       = each.value.address_space
-  dns_servers         = try(each.value.dns_servers, [])
-  parent_id           = local.rg_id
+  address_space = each.value.address_space
+  dns_servers   = try(each.value.dns_servers, [])
+  parent_id     = local.rg_id
 
   subnets = {
     for sk, s in each.value.subnets : s.name => {
