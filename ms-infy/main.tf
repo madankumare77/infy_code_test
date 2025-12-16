@@ -18,6 +18,8 @@ data "azurerm_resource_group" "rg" {
 locals {
   rg_name     = var.resource_group.create ? azurerm_resource_group.rg[0].name : data.azurerm_resource_group.rg[0].name
   rg_location = var.resource_group.create ? azurerm_resource_group.rg[0].location : data.azurerm_resource_group.rg[0].location
+  rg_id       = var.resource_group.create ? azurerm_resource_group.rg[0].id : data.azurerm_resource_group.rg[0].id
+
 }
 
 ########################################
@@ -97,9 +99,10 @@ module "vnet_created" {
 
   name                = each.value.name
   location            = each.value.location
-  resource_group_name = coalesce(try(each.value.resource_group_name, null), local.rg_name)
+  resource_group_name = local.rg_name
   address_space       = each.value.address_space
   dns_servers         = try(each.value.dns_servers, [])
+  parent_id           = local.rg_id
 
   subnets = {
     for sk, s in each.value.subnets : s.name => {
@@ -200,9 +203,12 @@ module "private_dns_zone" {
   source   = "Azure/avm-res-network-privatednszone/azurerm"
   for_each = var.private_dns_zones
 
-  name                = each.value.name
-  resource_group_name = local.rg_name
+  # Required by the module you are actually using:
+  domain_name = each.value.name
+  parent_id   = local.rg_id
 
+  # Keep this if your module supports VNet links (most do).
+  # If Terraform throws an error on this next, we’ll rename it to the module’s expected name.
   virtual_network_links = {
     for vnet_key in each.value.vnet_keys : "${each.key}-${vnet_key}" => {
       virtual_network_id = local.vnet_resource_id_by_key[vnet_key]
@@ -210,6 +216,7 @@ module "private_dns_zone" {
   }
 
   tags = merge(var.tags, try(each.value.tags, {}))
+
 }
 
 ########################################
