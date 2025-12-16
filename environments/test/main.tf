@@ -6,7 +6,7 @@ data "azurerm_resource_group" "rg" {
 # Management lock at RG scope
 resource "azurerm_management_lock" "rg_lock" {
   count      = var.rg_lock_enable ? 1 : 0
-  name       = "rg-cannot-delete"
+  name       = "rg-${var.lock_level}"
   scope      = data.azurerm_resource_group.rg.id
   lock_level = var.lock_level #"CanNotDelete" # or "ReadOnly"
   notes      = "Protect RG and all child resources from accidental deletion"
