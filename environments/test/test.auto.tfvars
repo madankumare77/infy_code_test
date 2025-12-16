@@ -15,9 +15,9 @@ lock_level     = "CanNotDelete"
 # ───────────────────────────────────────────────────────────────
 #  NETWORKING COMPONENTS
 # ───────────────────────────────────────────────────────────────
-enable_virtual_networks = true # Creates Virtual Network(s) defined in locals/variables
-enable_nsg              = true # Creates Network Security Groups (NSGs)
-enable_nsg_association  = true # Associates each subnet with its corresponding NSG
+enable_virtual_networks = false # Creates Virtual Network(s) defined in locals/variables
+enable_nsg              = false # Creates Network Security Groups (NSGs)
+enable_nsg_association  = false # Associates each subnet with its corresponding NSG
 
 # ───────────────────────────────────────────────────────────────
 #  STORAGE ACCOUNT
