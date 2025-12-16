@@ -245,9 +245,8 @@ resource "azurerm_storage_account" "sa" {
   access_tier              = try(each.value.access_tier, null)
 
   min_tls_version                   = try(each.value.advanced.min_tls_version, "TLS1_2")
-  enable_https_traffic_only         = try(each.value.advanced.enable_https_traffic_only, true)
   shared_access_key_enabled         = try(each.value.advanced.shared_access_key_enabled, false)
-  allow_blob_public_access          = try(each.value.advanced.allow_blob_public_access, false)
+  https_traffic_only_enabled       = try(each.value.advanced.enable_https_traffic_only, true) 
   allow_nested_items_to_be_public   = try(each.value.advanced.allow_nested_items_to_be_public, false)
   infrastructure_encryption_enabled = try(each.value.advanced.infrastructure_encryption_enabled, true)
 
@@ -382,14 +381,18 @@ resource "azurerm_monitor_diagnostic_setting" "diag" {
   target_resource_id         = each.value.target_resource_id
   log_analytics_workspace_id = each.value.log_analytics_workspace_id
 
+
   dynamic "enabled_log" {
-    for_each = each.value.logs
+    for_each = [
+      for l in try(each.value.logs, []) : l
+      if try(l.enabled, true)
+    ]
     content {
       category       = try(enabled_log.value.category, null)
       category_group = try(enabled_log.value.category_group, null)
-      enabled        = try(enabled_log.value.enabled, true)
     }
   }
+
 
   dynamic "metric" {
     for_each = each.value.metrics
