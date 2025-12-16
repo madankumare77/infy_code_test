@@ -139,12 +139,12 @@ variable "log_analytics_workspace_id" {
 
 
 data "azurerm_monitor_diagnostic_categories" "cog_cats" {
-  count = var.enable_diagnostics ? 1 : 0
+  count       = var.enable_diagnostics ? 1 : 0
   resource_id = azurerm_cognitive_account.preprod.id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "openai_diag" {
-  count = var.enable_diagnostics ? 1 : 0
+  count                          = var.enable_diagnostics ? 1 : 0
   name                           = "aoai-diag-to-law"
   target_resource_id             = azurerm_cognitive_account.preprod.id
   log_analytics_workspace_id     = var.log_analytics_workspace_id
@@ -172,5 +172,5 @@ variable "enable_diagnostics" {
 }
 
 output "openai_id" {
-  value = azurerm_cognitive_account.preprod.id 
+  value = azurerm_cognitive_account.preprod.id
 }

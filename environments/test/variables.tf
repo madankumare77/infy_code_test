@@ -8,6 +8,10 @@ variable "location" {
   type        = string
 }
 
+variable "lock_level" {
+  type = string
+}
+
 variable "enable_storage_account" {
   description = "Enable or disable Storage Account module"
   type        = bool
@@ -94,7 +98,7 @@ variable "enable_private_dns_zone" {
 variable "enable_appinsights" {
   description = "Enable or disable Application Insights module"
   type        = bool
-  default     = false  
+  default     = false
 }
 
 variable "enable_nsg" {
@@ -103,23 +107,23 @@ variable "enable_nsg" {
   default     = false
 }
 variable "enable_rbac" {
-  type = bool
+  type    = bool
   default = false
 }
 variable "enable_diagnostics_settings" {
-  type = bool
+  type    = bool
   default = false
 }
 variable "enable_private_endpoints" {
-  type = bool
+  type    = bool
   default = false
 }
 variable "rg_lock_enable" {
-  type = bool
+  type    = bool
   default = false
 }
 
 variable "enable_nsg_association" {
-  type = bool
+  type    = bool
   default = true
 }

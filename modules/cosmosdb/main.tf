@@ -105,7 +105,7 @@ resource "azurerm_private_endpoint" "cosmos_pe" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
-  count = var.enable_diagnostics ? 1 : 0
+  count                      = var.enable_diagnostics ? 1 : 0
   name                       = "cosmos-diag"
   target_resource_id         = azurerm_cosmosdb_account.cosmosdb.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
@@ -159,7 +159,7 @@ variable "enable_diagnostics" {
 
 # Outputs
 output "cosmosdb_id" {
-  value =  azurerm_cosmosdb_account.cosmosdb.id
+  value = azurerm_cosmosdb_account.cosmosdb.id
 }
 output "cosmosdb_endpoint" {
   value = azurerm_cosmosdb_account.cosmosdb.endpoint

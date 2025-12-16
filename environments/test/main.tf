@@ -5,10 +5,10 @@ data "azurerm_resource_group" "rg" {
 
 # Management lock at RG scope
 resource "azurerm_management_lock" "rg_lock" {
-  count = var.rg_lock_enable ? 1 : 0
+  count      = var.rg_lock_enable ? 1 : 0
   name       = "rg-cannot-delete"
   scope      = data.azurerm_resource_group.rg.id
-  lock_level = "CanNotDelete" # or "ReadOnly"
+  lock_level = var.lock_level #"CanNotDelete" # or "ReadOnly"
   notes      = "Protect RG and all child resources from accidental deletion"
 }
 
@@ -35,21 +35,21 @@ module "vnet" {
 }
 
 module "nsg" {
-  source     = "../../modules/nsg"
-  for_each = { for k, v in local.nsg_configs : k => v if var.enable_nsg }
-  nsg_name   = each.value.nsg_name
-  create_nsg = each.value.create_nsg
-  location   = each.value.location
-  rg_name    = each.value.rg_name
+  source         = "../../modules/nsg"
+  for_each       = { for k, v in local.nsg_configs : k => v if var.enable_nsg }
+  nsg_name       = each.value.nsg_name
+  create_nsg     = each.value.create_nsg
+  location       = each.value.location
+  rg_name        = each.value.rg_name
   security_rules = lookup(each.value, "security_rules", [])
 }
 
 module "nsg_association" {
-  source = "../../modules/nsg_association"
-  for_each = var.enable_nsg_association ? local.nsg_association_configs : {}
-  subnet_id = each.value.subnet_id
-  nsg_id = each.value.nsg_id
-  depends_on = [ module.vnet, module.nsg ]
+  source     = "../../modules/nsg_association"
+  for_each   = var.enable_nsg_association ? local.nsg_association_configs : {}
+  subnet_id  = each.value.subnet_id
+  nsg_id     = each.value.nsg_id
+  depends_on = [module.vnet, module.nsg]
 }
 
 
@@ -103,12 +103,12 @@ module "storage_account" {
 
 #Deploy Azure Function Apps with VNet integration and storage account binding
 module "function_app" {
-  source                     = "../../modules/function_app"
-  function_apps              = var.enable_function_app ? local.function_apps : {}
-  rg_name                    = data.azurerm_resource_group.rg.name
-  location                   = data.azurerm_resource_group.rg.location
-  env                        = var.env
-  depends_on                 = [module.storage_account, module.azure_identity, module.law]
+  source        = "../../modules/function_app"
+  function_apps = var.enable_function_app ? local.function_apps : {}
+  rg_name       = data.azurerm_resource_group.rg.name
+  location      = data.azurerm_resource_group.rg.location
+  env           = var.env
+  depends_on    = [module.storage_account, module.azure_identity, module.law]
 }
 
 # Deploy Azure Key Vaults with private endpoints and RBAC authorization
@@ -148,29 +148,29 @@ module "aks" {
 
   source = "../../modules/aks"
 
-  aks_name_prefix            = each.key
-  rg_name                    = data.azurerm_resource_group.rg.name
-  location                   = data.azurerm_resource_group.rg.location
-  env                        = var.env
-  kubernetes_version         = each.value.kubernetes_version
+  aks_name_prefix                   = each.key
+  rg_name                           = data.azurerm_resource_group.rg.name
+  location                          = data.azurerm_resource_group.rg.location
+  env                               = var.env
+  kubernetes_version                = each.value.kubernetes_version
   role_based_access_control_enabled = each.value.role_based_access_control_enabled
-  local_account_disabled     = each.value.local_account_disabled
-  private_cluster            = each.value.private_cluster
-  network_plugin             = each.value.network_plugin
-  load_balancer_sku          = each.value.load_balancer_sku
-  os_sku                     = each.value.os_sku
-  node_os_disk_type          = each.value.node_os_disk_type
-  enable_host_encryption     = each.value.encryption_host
-  vnet_subnet_id             = each.value.vnet_subnet_id
-  default_node_pool          = each.value.default_node_pool
-  additional_node_pools      = each.value.additional_node_pools
-  aks_dns_service_ip         = each.value.aks_dns_service_ip
-  aks_service_cidr           = each.value.aks_service_cidr
-  network_data_plane         = each.value.network_data_plane
-  network_plugin_mode        = each.value.network_plugin_mode
-  log_analytics_workspace_id = try(module.law[0].log_analytics_workspace_id, "")
-  UserAssigned_identity = each.value.UserAssigned_identity
-  tags                       = each.value.tags
+  local_account_disabled            = each.value.local_account_disabled
+  private_cluster                   = each.value.private_cluster
+  network_plugin                    = each.value.network_plugin
+  load_balancer_sku                 = each.value.load_balancer_sku
+  os_sku                            = each.value.os_sku
+  node_os_disk_type                 = each.value.node_os_disk_type
+  enable_host_encryption            = each.value.encryption_host
+  vnet_subnet_id                    = each.value.vnet_subnet_id
+  default_node_pool                 = each.value.default_node_pool
+  additional_node_pools             = each.value.additional_node_pools
+  aks_dns_service_ip                = each.value.aks_dns_service_ip
+  aks_service_cidr                  = each.value.aks_service_cidr
+  network_data_plane                = each.value.network_data_plane
+  network_plugin_mode               = each.value.network_plugin_mode
+  log_analytics_workspace_id        = try(module.law[0].log_analytics_workspace_id, "")
+  UserAssigned_identity             = each.value.UserAssigned_identity
+  tags                              = each.value.tags
 
   depends_on = [module.vnet, module.law]
 }
@@ -422,13 +422,13 @@ module "cosmosdb" {
   tags                       = each.value.tags
   private_endpoint_enabled   = each.value.private_endpoint_enabled
   private_dns_zone_id        = each.value.private_dns_zone_id
-  enable_diagnostics         =  each.value.enable_diagnostics
+  enable_diagnostics         = each.value.enable_diagnostics
   depends_on                 = [module.azure_identity, module.vnet, module.law]
 }
 
 # Deploy Application Insights for application performance monitoring
 module "AppInsights" {
-  count                     = var.enable_appinsights ? 1 : 0
+  count                      = var.enable_appinsights ? 1 : 0
   source                     = "../../modules/appinsights"
   name_prefix                = "appinsight-claims-test"
   env                        = var.env
@@ -449,14 +449,14 @@ locals {
 }
 
 module "kv_diag" {
-  for_each = var.enable_diagnostics_settings ? local.diagnostics_settings_configs : {}
+  for_each                   = var.enable_diagnostics_settings ? local.diagnostics_settings_configs : {}
   source                     = "../../modules/diagnostic_setting"
   name                       = format("%s-%s-diagnostic-module", var.env, each.value.name)
   target_resource_id         = each.value.target_resource_id
   log_analytics_workspace_id = try(module.law[0].log_analytics_workspace_id, "")
   log_categories             = each.value.log_categories
   metric_categories          = each.value.metric_categories
-  depends_on = [ module.law]
+  depends_on                 = [module.law]
 }
 
 locals {
@@ -481,8 +481,8 @@ module "private_endpoints" {
 locals {
   rbac_configs = {
     kv = {
-      scope = try(module.kv["kv005-cind-claims"].key_vault_id, "")
-      principal_id = try(module.azure_identity["cosmos"].user_assigned_identity_principal_id, "")   
+      scope                = try(module.kv["kv005-cind-claims"].key_vault_id, "")
+      principal_id         = try(module.azure_identity["cosmos"].user_assigned_identity_principal_id, "")
       role_definition_name = "Key Vault Secrets User"
     }
   }
@@ -506,18 +506,18 @@ module "vnet_peering" {
   hub_vnets = {
     hub1 = {
       name            = try(module.vnet["cind-claims"].vnet_name, "") #Vnet name
-      resource_group  = try(data.azurerm_resource_group.rg.name, "")#vnet rg name
-      vnet_id         = try(module.vnet["cind-claims"].vnet_id, "") #"vnet ID. /subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
-      subscription_id = "" #<sub-id>
+      resource_group  = try(data.azurerm_resource_group.rg.name, "")  #vnet rg name
+      vnet_id         = try(module.vnet["cind-claims"].vnet_id, "")   #"vnet ID. /subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
+      subscription_id = ""                                            #<sub-id>
     }
   }
 
   spoke_vnets = {
     spoke1 = {
-      name            = try(module.vnet["vnet004"].vnet_name, "") #Vnet name
+      name            = try(module.vnet["vnet004"].vnet_name, "")    #Vnet name
       resource_group  = try(data.azurerm_resource_group.rg.name, "") #vnet rg name
-      vnet_id         = try(module.vnet["vnet004"].vnet_id, "") #"vnet ID. /subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
-      subscription_id = "" #<sub-id>
+      vnet_id         = try(module.vnet["vnet004"].vnet_id, "")      #"vnet ID. /subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
+      subscription_id = ""                                           #<sub-id>
     }
   }
 }

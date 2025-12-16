@@ -55,12 +55,12 @@ resource "azurerm_private_endpoint" "di_pe" {
 
 
 data "azurerm_monitor_diagnostic_categories" "cats" {
-  count = var.enable_diagnostics ? 1 : 0
+  count       = var.enable_diagnostics ? 1 : 0
   resource_id = azurerm_cognitive_account.di.id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "diag" {
-  count = var.enable_diagnostics ? 1 : 0
+  count                      = var.enable_diagnostics ? 1 : 0
   name                       = "cognitive-diag-to-law"
   target_resource_id         = azurerm_cognitive_account.di.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
@@ -113,5 +113,5 @@ output "di_endpoint" {
 }
 
 output "di_id" {
-  value       = azurerm_cognitive_account.di.id
+  value = azurerm_cognitive_account.di.id
 }

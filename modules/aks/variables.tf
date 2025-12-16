@@ -102,7 +102,7 @@ variable "tags" {
   default     = {}
 }
 variable "UserAssigned_identity" {
-  type = string
+  type    = string
   default = ""
 }
 variable "role_based_access_control_enabled" {

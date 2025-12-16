@@ -41,29 +41,10 @@ locals {
 locals {
   nsg_configs = {
     nsg1 = {
-      create_nsg     = true
-      nsg_name       = "nsg-infy-test"
-      location       = data.azurerm_resource_group.rg.location
-      rg_name        = data.azurerm_resource_group.rg.name
-      security_rules = [
-        {
-          name                       = "Allow-InBound"
-          priority                   = 500
-          direction                  = "Inbound"
-          access                     = "Allow"
-          protocol                   = "Tcp"
-          source_address_prefix      = "*"
-          destination_address_prefix = "VirtualNetwork"
-          source_port_range          = "*"
-          destination_port_range     = "443"
-        }
-      ]
-    }
-    nsg2 = {
-      create_nsg     = false
-      nsg_name       = "nsg-infy-manual"
-      location       = data.azurerm_resource_group.rg.location
-      rg_name        = data.azurerm_resource_group.rg.name
+      create_nsg = true
+      nsg_name   = "nsg-infy-test"
+      location   = data.azurerm_resource_group.rg.location
+      rg_name    = data.azurerm_resource_group.rg.name
       security_rules = [
         {
           name                       = "Allow-InBound"
@@ -231,22 +212,22 @@ locals {
 locals {
   aks_configs = {
     aks003 = {
-      name                = "aks001"
-      kubernetes_version  = "1.30.8" #az aks get-versions --location centralindia
-      private_cluster     = true
-      network_plugin      = "azure"
-      load_balancer_sku   = "standard"
-      os_sku              = "Ubuntu"
-      node_os_disk_type   = "Ephemeral"
-      encryption_host     = true
-      network_data_plane  = "cilium"
-      network_plugin_mode = "overlay"
+      name                              = "aks001"
+      kubernetes_version                = "1.30.8" #az aks get-versions --location centralindia
+      private_cluster                   = true
+      network_plugin                    = "azure"
+      load_balancer_sku                 = "standard"
+      os_sku                            = "Ubuntu"
+      node_os_disk_type                 = "Ephemeral"
+      encryption_host                   = true
+      network_data_plane                = "cilium"
+      network_plugin_mode               = "overlay"
       role_based_access_control_enabled = true
-      local_account_disabled = true
-      vnet_subnet_id      = try(module.vnet["cind-claims"].subnet_ids["cind-aiservice"], "")
-      aks_service_cidr    = "10.1.0.0/16"
-      aks_dns_service_ip  = "10.1.0.10"
-      UserAssigned_identity = try(module.azure_identity["aks"].user_assigned_id, "")
+      local_account_disabled            = true
+      vnet_subnet_id                    = try(module.vnet["cind-claims"].subnet_ids["cind-aiservice"], "")
+      aks_service_cidr                  = "10.1.0.0/16"
+      aks_dns_service_ip                = "10.1.0.10"
+      UserAssigned_identity             = try(module.azure_identity["aks"].user_assigned_id, "")
       role_based_access_control_enabled = true
       tags = {
         created_by  = "terraform"
@@ -521,9 +502,9 @@ locals {
       offer_type               = "Standard"
       geo_location1            = "SouthIndia"
       private_endpoint_enabled = true
-      vnet_id  = try(module.vnet["cind-claims"].vnet_id, "")
-      subnet_id = try(module.vnet["cind-claims"].subnet_ids["cind-cosmosdb"], "")
-      UserAssigned_identity = try(module.azure_identity["cosmos"].user_assigned_id, "")
+      vnet_id                  = try(module.vnet["cind-claims"].vnet_id, "")
+      subnet_id                = try(module.vnet["cind-claims"].subnet_ids["cind-cosmosdb"], "")
+      UserAssigned_identity    = try(module.azure_identity["cosmos"].user_assigned_id, "")
       private_dns_zone_id      = try(module.private_dns_zone["cosmosdb"].private_dns_zone_id, "")
       enable_diagnostics       = true
       tags = {

@@ -66,7 +66,7 @@ module "kv_diag" {
   log_analytics_workspace_id = var.log_analytics_workspace_id
   log_categories             = var.log_categories
   metric_categories          = var.metric_categories
-  depends_on = [ var.log_analytics_workspace_id ]
+  depends_on                 = [var.log_analytics_workspace_id]
 }
 
 data "azurerm_client_config" "current" {}
@@ -79,5 +79,5 @@ output "kv_id" {
 variable "private_dns_zone_id" {
   description = "The ID of the Private DNS Zone to link the Private Endpoint to."
   type        = string
-  default = ""
+  default     = ""
 }

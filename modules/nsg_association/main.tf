@@ -4,8 +4,8 @@ resource "azurerm_subnet_network_security_group_association" "example" {
 }
 
 variable "subnet_id" {
-    type = string
+  type = string
 }
 variable "nsg_id" {
-    type = string
+  type = string
 }

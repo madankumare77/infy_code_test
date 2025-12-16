@@ -52,12 +52,12 @@ variable "private_dns_zone_id" {
 
 
 data "azurerm_monitor_diagnostic_categories" "aml_cats" {
-  count = var.enable_diagnostics ? 1 : 0
+  count       = var.enable_diagnostics ? 1 : 0
   resource_id = azurerm_machine_learning_workspace.example.id
 }
 
 resource "azurerm_monitor_diagnostic_setting" "aml_diag" {
-  count = var.enable_diagnostics ? 1 : 0
+  count                          = var.enable_diagnostics ? 1 : 0
   name                           = "aml-diag-to-law"
   target_resource_id             = azurerm_machine_learning_workspace.example.id
   log_analytics_workspace_id     = var.log_analytics_workspace_id

@@ -25,16 +25,16 @@ locals {
 resource "azurerm_network_security_rule" "managed" {
   for_each = { for r in var.security_rules : r.name => r }
 
-  name                        = each.value.name
-  priority                    = each.value.priority
-  direction                   = each.value.direction
-  access                      = each.value.access
-  protocol                    = each.value.protocol
+  name      = each.value.name
+  priority  = each.value.priority
+  direction = each.value.direction
+  access    = each.value.access
+  protocol  = each.value.protocol
 
-  source_address_prefix       = each.value.source_address_prefix
-  destination_address_prefix  = each.value.destination_address_prefix
-  source_port_range           = each.value.source_port_range
-  destination_port_range      = each.value.destination_port_range
+  source_address_prefix      = each.value.source_address_prefix
+  destination_address_prefix = each.value.destination_address_prefix
+  source_port_range          = each.value.source_port_range
+  destination_port_range     = each.value.destination_port_range
 
   resource_group_name         = var.rg_name
   network_security_group_name = local.nsg_name_resolved
@@ -47,13 +47,13 @@ variable "security_rules" {
   type = list(object({
     name                       = string
     priority                   = number
-    direction                  = string          # "Inbound" or "Outbound"
-    access                     = string          # "Allow" or "Deny"
-    protocol                   = string          # "Tcp" | "Udp" | "*" | "Ah" | "Esp"
+    direction                  = string # "Inbound" or "Outbound"
+    access                     = string # "Allow" or "Deny"
+    protocol                   = string # "Tcp" | "Udp" | "*" | "Ah" | "Esp"
     source_address_prefix      = string
     destination_address_prefix = string
-    source_port_range          = string          # "*" or single port
-    destination_port_range     = string          # "*" or single port
+    source_port_range          = string # "*" or single port
+    destination_port_range     = string # "*" or single port
   }))
   default = []
 }

@@ -89,7 +89,7 @@ resource "azurerm_storage_account" "storage" {
 
 
 resource "azurerm_monitor_diagnostic_setting" "sa_to_law" {
-  count = var.enable_storage_diagnostics ? 1 : 0
+  count                      = var.enable_storage_diagnostics ? 1 : 0
   name                       = format("%s-%s-diagnostic", var.env, azurerm_storage_account.storage.name)
   target_resource_id         = azurerm_storage_account.storage.id
   log_analytics_workspace_id = var.log_analytics_workspace_id

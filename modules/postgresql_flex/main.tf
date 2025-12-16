@@ -48,7 +48,7 @@ resource "azurerm_postgresql_flexible_server_database" "db" {
 }
 
 module "postgres_diag" {
-  count = var.enable_diagnostics ? 1 : 0
+  count                      = var.enable_diagnostics ? 1 : 0
   source                     = "../../modules/diagnostic_setting"
   name                       = format("%s-%s-diagnostic", var.env, var.psql_server_name_prefix)
   target_resource_id         = azurerm_postgresql_flexible_server.this.id

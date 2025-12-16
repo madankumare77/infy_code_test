@@ -66,5 +66,5 @@ variable "private_endpoint_enabled" {
 }
 
 output "redis_id" {
-  value = azurerm_redis_cache.redis.id 
+  value = azurerm_redis_cache.redis.id
 }

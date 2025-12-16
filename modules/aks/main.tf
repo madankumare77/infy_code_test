@@ -110,7 +110,7 @@ module "aks_diag" {
 
 
 output "aks_id" {
-  value = azurerm_kubernetes_cluster.aks.id 
+  value = azurerm_kubernetes_cluster.aks.id
 }
 output "aks_user_identity_principal_id" {
   value = azurerm_user_assigned_identity.this.principal_id

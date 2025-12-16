@@ -110,14 +110,14 @@ resource "azurerm_linux_function_app" "linux" {
 }
 
 data "azurerm_monitor_diagnostic_categories" "func_cats" {
-  for_each                      = { for k, v in var.function_apps : k => v if v.enable_diagnostics }
+  for_each    = { for k, v in var.function_apps : k => v if v.enable_diagnostics }
   resource_id = each.value.id
 }
 
 # Only enable the 'AppServiceAuditLogs' category (Access Audit)
 resource "azurerm_monitor_diagnostic_setting" "func_diag_audit" {
   #for_each                   = { azurerm_linux_function_app.linux : each.key => each.value if each.value.log_analytics_workspace_id != "" }
-  for_each                      = { for k, v in var.function_apps : k => v if v.enable_diagnostics }
+  for_each                   = { for k, v in var.function_apps : k => v if v.enable_diagnostics }
   name                       = "func-audit-to-law"
   target_resource_id         = each.value.id
   log_analytics_workspace_id = each.value.log_analytics_workspace_id
