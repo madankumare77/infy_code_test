@@ -42,11 +42,11 @@ data "azurerm_log_analytics_workspace" "law_existing" {
   resource_group_name = local.rg_name
 }
 
+
 locals {
-  law_id = var.log_analytics.create
-    ? try(module.law_created[0].resource_id, module.law_created[0].id)
-    : data.azurerm_log_analytics_workspace.law_existing[0].id
+  law_id = var.log_analytics.create ? try(module.law_created[0].resource_id, module.law_created[0].id) : data.azurerm_log_analytics_workspace.law_existing[0].id
 }
+
 
 ########################################
 # App Insights: create OR existing (native)
