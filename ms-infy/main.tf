@@ -335,30 +335,32 @@ resource "null_resource" "validate_pe" {
   }
 }
 
+
 module "private_endpoint" {
   source   = "Azure/avm-res-network-privateendpoint/azurerm"
   for_each = var.private_endpoints
 
+  # Required (AVM)
   name                = each.value.name
   location            = local.rg_location
   resource_group_name = local.rg_name
 
-  subnet_id = local.subnet_id_by_key["${each.value.vnet_key}.${each.value.subnet_key}"]
+  subnet_resource_id             = local.subnet_id_by_key["${each.value.vnet_key}.${each.value.subnet_key}"]
+  private_connection_resource_id = local.pe_target_id[each.key]
+  network_interface_name         = coalesce(try(each.value.network_interface_name, null), "${each.value.name}-nic")
 
-  private_service_connection = {
-    name                           = "psc-${each.value.name}"
-    private_connection_resource_id = local.pe_target_id[each.key]
-    subresource_names              = each.value.subresource_names
-    is_manual_connection           = false
-  }
+  # Commonly required/used in Private Endpoint modules:
+  subresource_names = each.value.subresource_names
 
-  private_dns_zone_group = {
-    name                 = "pdzg-${each.value.name}"
-    private_dns_zone_ids = [module.private_dns_zone[each.value.private_dns_zone_key].private_dns_zone_id]
-  }
+  # DNS integration (typical AVM pattern uses zone resource IDs)
+  # NOTE: your module expects a list of private DNS zone resource IDs (not a nested "group" block).
+  private_dns_zone_resource_ids = [
+    module.private_dns_zone[each.value.private_dns_zone_key].private_dns_zone_id
+  ]
 
   tags = merge(var.tags, try(each.value.tags, {}))
 }
+
 
 ########################################
 # Diagnostic settings (optional)

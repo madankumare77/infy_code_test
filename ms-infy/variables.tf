@@ -204,32 +204,23 @@ variable "key_vaults" {
 }
 
 # Private Endpoints (AVM) - ONLY configured here
+
 variable "private_endpoints" {
   type = map(object({
     name       = string
     vnet_key   = string
     subnet_key = string
 
-    target_kind        = optional(string) # storage | keyvault | loganalytics | appinsights
+    target_kind        = optional(string)
     target_key         = optional(string)
     target_resource_id = optional(string)
 
-    subresource_names    = list(string)
-    private_dns_zone_key = string
-    tags                 = optional(map(string), {})
+    subresource_names      = list(string)
+    private_dns_zone_key   = string
+    network_interface_name = optional(string)
+    tags                   = optional(map(string), {})
   }))
   default = {}
-
-  validation {
-    condition = alltrue([
-      for k, pe in var.private_endpoints :
-      (
-        (try(pe.target_resource_id, null) != null) ||
-        (try(pe.target_kind, null) != null && try(pe.target_key, null) != null)
-      )
-    ])
-    error_message = "Each private_endpoints entry must include either target_resource_id OR (target_kind AND target_key)."
-  }
 }
 
 # Diagnostic settings (optional)
