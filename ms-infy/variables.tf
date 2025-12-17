@@ -1,245 +1,152 @@
 
-variable "subscription_id" { type = string }
-variable "tenant_id" { type = string }
-
-variable "tags" {
-  type    = map(string)
-  default = {}
+variable "subscription_id" {
+  type        = string
+  description = "Azure subscription ID."
 }
 
-# Resource Group: create OR existing
+variable "tenant_id" {
+  type        = string
+  description = "Azure tenant ID."
+}
+
+############################################
+# Safety switches
+############################################
+variable "enabled" {
+  type        = bool
+  description = "Global switch. If false, ALL managed resources are removed on apply (requires allow_destroy=true)."
+  default     = true
+}
+
+variable "allow_destroy" {
+  type        = bool
+  description = "Safety guard. Any deletion (subnet/NSG/association/VNet) requires allow_destroy=true."
+  default     = false
+}
+
+############################################
+# Resource Group (create or import)
+############################################
 variable "resource_group" {
+  description = "Create RG with AVM OR import existing RG by name."
   type = object({
+    enabled  = optional(bool, true)
     create   = bool
     name     = string
-    location = optional(string) # required when create=true
+    location = string
     tags     = optional(map(string), {})
   })
 }
 
-# Log Analytics: create OR existing (AVM for create, data source for existing)
-variable "log_analytics" {
-  type = object({
-    create            = bool
-    name              = string
-    location          = optional(string)
-    sku               = optional(string, "PerGB2018")
-    retention_in_days = optional(number, 30)
-    tags              = optional(map(string), {})
-  })
-}
-
-# App Insights: create OR existing (native resource)
-variable "application_insights" {
-  type = object({
-    create                = bool
-    name                  = string
-    location              = optional(string)
-    application_type      = optional(string, "web")
-    retention_in_days     = optional(number, 90)
-    sampling_percentage   = optional(number, 100)
-    disable_ip_masking    = optional(bool, false)
-    internet_ingestion_on = optional(bool, true)
-    internet_query_on     = optional(bool, true)
-    tags                  = optional(map(string), {})
-  })
-}
-
-# VNets: create OR existing (AVM for create)
-# Keys: vnet1, vnet2...
-# Real Azure names are inside name=""
+############################################
+# VNets + Subnets (your structure, moved to tfvars)
+# Minimal additions:
+# - enabled on vnet level and subnet level for selective destroy
+############################################
 variable "virtual_networks" {
-  type = map(object({
-    create                 = bool
-    name                   = string
-    resource_group_name    = optional(string)
-    location               = optional(string)
-    address_space          = optional(list(string))
-    dns_servers            = optional(list(string), [])
-    enable_ddos_protection = optional(bool, false)
-    tags                   = optional(map(string), {})
+  description = "Nested map: outer grouping key -> vnet key -> vnet config."
+  type = map(
+    map(object({
+      enabled                = optional(bool, true)
+      location               = string
+      address_space          = string
+      enable_ddos_protection = bool
+      dns_servers            = optional(list(string), [])
+      tags                   = optional(map(string), {})
 
-    subnets = map(object({
-      name              = string
-      address_prefixes  = optional(list(string))
-      service_endpoints = optional(list(string))
-      delegation = optional(object({
-        name = string
-        service_delegation = object({
-          name    = string
-          actions = list(string)
-        })
+      subnet_configs = map(object({
+        enabled         = optional(bool, true)
+        address_prefix  = string
+        service_endpoints = optional(list(string), [])
+
+        delegation = optional(object({
+          name = string
+          service_delegation = object({
+            name    = string
+            actions = list(string)
+          })
+        }))
+
+        # Common portal policy toggles for private endpoints/private link services
+        private_endpoint_network_policies_enabled     = optional(bool, true)
+        private_link_service_network_policies_enabled = optional(bool, true)
+
+        # Optional future-ready
+        route_table_id = optional(string)
       }))
     }))
-  }))
+  )
+
+  validation {
+    condition = alltrue([
+      for outer_k, outer_v in var.virtual_networks :
+      alltrue([
+        for vnet_k, vnet in outer_v :
+        can(cidrnetmask(vnet.address_space))
+      ])
+    ])
+    error_message = "Each virtual_networks[*][*].address_space must be a valid CIDR, e.g. 10.0.0.0/16."
+  }
 }
 
-# NSGs: create OR existing (AVM for create)
-variable "nsgs" {
+############################################
+# NSGs (create with AVM OR import existing)
+# NOTE: map keys must be UNIQUE (your example had duplicate nsg1 keys - invalid).
+############################################
+variable "nsg_configs" {
+  description = "Map of NSGs keyed by logical key (unique). Can create or reference existing."
   type = map(object({
-    create              = bool
-    name                = string
-    resource_group_name = optional(string)
-    location            = optional(string)
-    tags                = optional(map(string), {})
+    enabled    = optional(bool, true)
+    create_nsg = bool
+
+    nsg_name = string
+    location = optional(string)
+    rg_name  = optional(string)
+    tags     = optional(map(string), {})
+
+    # For existing NSG
+    existing_nsg_id   = optional(string)
+    existing_rg_name  = optional(string)
+    existing_nsg_name = optional(string)
+
+    # Rules only used when create_nsg=true
     security_rules = optional(list(object({
       name                       = string
       priority                   = number
-      direction                  = string
-      access                     = string
-      protocol                   = string
+      direction                  = string   # Inbound/Outbound
+      access                     = string   # Allow/Deny
+      protocol                   = string   # Tcp/Udp/Icmp/*/Any
       source_address_prefix      = string
       destination_address_prefix = string
       source_port_range          = string
       destination_port_range     = string
+      description                = optional(string)
     })), [])
   }))
-  default = {}
+
+  validation {
+    condition = alltrue([
+      for k, nsg in var.nsg_configs :
+      alltrue([for r in try(nsg.security_rules, []) : r.priority >= 100 && r.priority <= 4096])
+    ])
+    error_message = "NSG rule priority must be between 100 and 4096."
+  }
 }
 
+############################################
+# NSG <-> Subnet associations (tfvars-driven)
+# This gives full flexibility:
+# - create 1-2 NSGs
+# - attach any NSG to any subnet(s)
+# - works whether NSG is created or imported
+############################################
 variable "nsg_associations" {
+  description = "Map of association configs. Each entry attaches one NSG to one subnet."
   type = map(object({
-    vnet_key   = string
-    subnet_key = string
-    nsg_key    = string
-  }))
-  default = {}
-}
-
-# Private DNS Zones (AVM)
-variable "private_dns_zones" {
-  type = map(object({
-    name      = string
-    vnet_keys = list(string)
-    tags      = optional(map(string), {})
-  }))
-  default = {}
-}
-
-# User Assigned Identities (native)
-variable "user_assigned_identities" {
-  type = map(object({
-    name     = string
-    location = optional(string)
-    tags     = optional(map(string), {})
-  }))
-  default = {}
-}
-
-# Storage Account (Portal-tabs model)
-variable "storage_accounts" {
-  type = map(object({
-    name                     = string
-    location                 = optional(string)
-    account_kind             = optional(string, "StorageV2")
-    account_tier             = optional(string, "Standard")
-    account_replication_type = string
-    access_tier              = optional(string, "Hot")
-
-    advanced = optional(object({
-      min_tls_version                   = optional(string, "TLS1_2")
-      enable_https_traffic_only         = optional(bool, true)
-      shared_access_key_enabled         = optional(bool, false)
-      allow_blob_public_access          = optional(bool, false)
-      allow_nested_items_to_be_public   = optional(bool, false)
-      infrastructure_encryption_enabled = optional(bool, true)
-
-      is_hns_enabled     = optional(bool, false)
-      nfsv3_enabled      = optional(bool, false)
-      sftp_enabled       = optional(bool, false)
-      local_user_enabled = optional(bool, false)
-    }), {})
-
-    networking = optional(object({
-      public_network_access_enabled = optional(bool, true)
-      default_action                = optional(string, "Deny")
-      bypass                        = optional(list(string), ["AzureServices"])
-      ip_rules                      = optional(list(string), [])
-      subnet_ids                    = optional(list(string), [])
-    }), {})
-
-    data_protection = optional(object({
-      versioning_enabled  = optional(bool, true)
-      change_feed_enabled = optional(bool, false)
-
-      blob_soft_delete = optional(object({
-        enabled = optional(bool, true)
-        days    = optional(number, 7)
-      }), {})
-
-      container_soft_delete = optional(object({
-        enabled = optional(bool, true)
-        days    = optional(number, 7)
-      }), {})
-    }), {})
-
-    tags = optional(map(string), {})
-  }))
-  default = {}
-}
-
-# Key Vault (Portal-tabs model)
-variable "key_vaults" {
-  type = map(object({
-    name     = string
-    location = optional(string)
-    sku_name = optional(string, "standard")
-
-    soft_delete_retention_days = optional(number, 7)
-    purge_protection_enabled   = optional(bool, true)
-
-    enable_rbac_authorization = optional(bool, true)
-
-    networking = optional(object({
-      public_network_access_enabled = optional(bool, false)
-      default_action                = optional(string, "Deny")
-      bypass                        = optional(string, "AzureServices")
-      ip_rules                      = optional(list(string), [])
-      subnet_ids                    = optional(list(string), [])
-    }), {})
-
-    tags = optional(map(string), {})
-  }))
-  default = {}
-}
-
-# Private Endpoints (AVM) - ONLY configured here
-
-variable "private_endpoints" {
-  type = map(object({
-    name       = string
-    vnet_key   = string
-    subnet_key = string
-
-    target_kind        = optional(string)
-    target_key         = optional(string)
-    target_resource_id = optional(string)
-
-    subresource_names      = list(string)
-    private_dns_zone_key   = string
-    network_interface_name = optional(string)
-    tags                   = optional(map(string), {})
-  }))
-  default = {}
-}
-
-# Diagnostic settings (optional)
-variable "diagnostic_settings" {
-  type = map(object({
-    name                       = string
-    target_resource_id         = string
-    log_analytics_workspace_id = string
-
-    logs = optional(list(object({
-      category       = optional(string)
-      category_group = optional(string)
-      enabled        = optional(bool, true)
-    })), [])
-
-    metrics = optional(list(object({
-      category = string
-      enabled  = optional(bool, true)
-    })), [])
+    enabled    = optional(bool, true)
+    vnet_key   = string   # e.g. cind-claims
+    subnet_key = string   # e.g. cind-pvt
+    nsg_key    = string   # e.g. nsg_created or nsg_existing
   }))
   default = {}
 }

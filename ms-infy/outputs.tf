@@ -1,11 +1,19 @@
 
-output "resource_group_name" { value = local.rg_name }
-output "resource_group_location" { value = local.rg_location }
+output "resource_group_name" {
+  value = local.rg_name
+}
 
-output "law_id" { value = local.law_id }
-output "appi_id" { value = local.appi_id }
+output "vnet_ids" {
+  value = { for k, v in module.vnet : k => v.resource_id }
+}
 
-output "subnet_ids" { value = local.subnet_id_by_key }
-output "nsg_ids" { value = local.nsg_id_by_key }
+output "subnet_ids" {
+  value = {
+    for vnet_k, v in module.vnet :
+    vnet_k => { for sn_k, sn in v.subnets : sn_k => sn.resource_id }
+  }
+}
 
-output "storage_ids" { value = { for k, v in azurerm_storage_account.sa : k => v.id } }
+output "nsg_ids" {
+  value = local.nsg_ids
+}
