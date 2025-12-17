@@ -90,7 +90,7 @@ locals {
 ########################################
 
 module "nsg" {
-  for_each = var.enabled && var.create_nsgs ? tomap({ for k, n in local.effective_nsg_configs : k => n if try(n.enabled, true) && n.create_nsg }) : tomap({})
+  for_each = { for k, n in local.effective_nsg_configs : k => n if var.enabled && var.create_nsgs && try(n.enabled, true) && n.create_nsg }
 
   source  = "Azure/avm-res-network-networksecuritygroup/azurerm"
   version = "0.5.0"
@@ -106,9 +106,9 @@ module "nsg" {
 }
 
 data "azurerm_network_security_group" "existing" {
-  for_each = var.enabled && var.create_nsgs ? tomap({ for k, n in local.effective_nsg_configs : k => n if try(n.enabled, true) && !n.create_nsg }) : tomap({})
+  for_each = { for k, n in local.effective_nsg_configs : k => n if var.enabled && var.create_nsgs && try(n.enabled, true) && !n.create_nsg }
 
-  name                = coalesce(try(each.value.existing_nsg_name, null), each.value.nsg_name)
+  name                = coalesce(try(each.value.existing_nsg_name, null), try(each.value.nsg_name, null))
   resource_group_name = coalesce(try(each.value.existing_rg_name, null), local.rg_name)
 }
 
@@ -132,7 +132,7 @@ locals {
 ########################################
 
 module "vnet" {
-  for_each = var.enabled && var.create_vnets ? tomap({ for k, v in local.vnet_flat : k => v if try(v.enabled, true) }) : tomap({})
+  for_each = { for k, v in local.vnet_flat : k => v if var.enabled && var.create_vnets && try(v.enabled, true) }
 
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "0.8.0"
@@ -195,7 +195,7 @@ module "vnet" {
 ########################################
 
 resource "azurerm_subnet_network_security_group_association" "assoc" {
-  for_each = var.enabled && var.create_associations ? tomap({ for k, a in local.effective_nsg_associations : k => a if try(a.enabled, true) }) : tomap({})
+  for_each = { for k, a in local.effective_nsg_associations : k => a if var.enabled && var.create_associations && try(a.enabled, true) }
 
   subnet_id                 = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
   network_security_group_id = local.nsg_ids[each.value.nsg_key]
