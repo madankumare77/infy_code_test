@@ -2,14 +2,14 @@ locals {
   virtual_networks = {
     vnet1 = {
       cind-claims = {
-        create                 = false
+        create                 = false             # This is the switch to vnet: true will create the vnet and false will destroy
         location               = "centralindia"
         address_space          = "100.122.96.0/24"
         enable_ddos_protection = false
         dns_servers            = ["168.63.129.16"]
         tags                   = { created_by = "terraform" }
 
-        subnet_configs = {
+        subnet_configs = {                        # you can add map of object to create the subnets and remove the code will destroy the subnet
           cind-pvt = {
             address_prefix    = "100.122.96.0/27"
             service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
@@ -66,6 +66,8 @@ locals {
     }
   }
 
+#This is the nsg configuration. create true will try to create new nsg.
+#create = false will import the existing nsg. required nsg name.
   nsg_configs = {
     # nsg1 = {
     #   create   = true
@@ -109,6 +111,7 @@ locals {
     # }
   }
 
+#This is the snet and nsg integartion. add map of objects to create  snet vent assosiation. commenting the code will remove the assosation.
   nsg_associations = {
     # assoc_pvt = {
     #   vnet_key   = "cind-claims"
