@@ -12,44 +12,18 @@ variable "tenant_id" {
 ############################################
 # Safety switches
 ############################################
-variable "enabled" {
-  type        = bool
-  description = "Global switch. If false, ALL managed resources are removed on apply (requires allow_destroy=true)."
-  default     = true
-}
-
 variable "allow_destroy" {
   type        = bool
   description = "Safety guard. Any deletion (subnet/NSG/association/VNet) requires allow_destroy=true."
   default     = false
 }
-
 ############################################
-# Per-resource creation switches
+# NOTE: The module uses `locals` as the authoritative source
+# for resource create/destroy flags. Per-resource `create` keys
+# are defined in `ms-infy/locals.tf` (vnets, subnets, nsgs, associations,
+# and resource_group). The `allow_destroy` variable remains as a
+# global safety guard and must be set to true to permit deletions.
 ############################################
-variable "create_resource_group" {
-  type        = bool
-  description = "When false, the module will not create or read resource group resources. Uses locals instead."
-  default     = true
-}
-
-variable "create_vnets" {
-  type        = bool
-  description = "When false, VNets will not be created."
-  default     = true
-}
-
-variable "create_nsgs" {
-  type        = bool
-  description = "When false, NSG creation (create_nsg=true entries) will be disabled. Existing/imported NSGs are still read."
-  default     = true
-}
-
-variable "create_associations" {
-  type        = bool
-  description = "When false, NSG<->subnet associations will not be created."
-  default     = true
-}
 
 ############################################
 # NOTE: The module now uses `locals` as the authoritative source

@@ -16,19 +16,19 @@ locals {
     }
   ]...)
 
-  any_vnet_disabled = anytrue([for k, v in local.vnet_flat : !try(v.enabled, true)])
+  any_vnet_disabled = anytrue([for k, v in local.vnet_flat : !try(v.create, true)])
 
   any_subnet_disabled = anytrue(flatten([
     for vnet_k, vnet in local.vnet_flat : [
-      for sn_k, sn in vnet.subnet_configs : !try(sn.enabled, true)
+      for sn_k, sn in vnet.subnet_configs : !try(sn.create, true)
     ]
   ]))
 
-  any_nsg_disabled   = anytrue([for k, n in local.effective_nsg_configs : !try(n.enabled, true)])
-  any_assoc_disabled = anytrue([for k, a in local.effective_nsg_associations : !try(a.enabled, true)])
+  any_nsg_disabled   = anytrue([for k, n in local.effective_nsg_configs : !try(n.create, true)])
+  any_assoc_disabled = anytrue([for k, a in local.effective_nsg_associations : !try(a.create, true)])
 
   any_delete_intent = (
-    !var.enabled
+    !local.effective_resource_group.create
     || local.any_vnet_disabled
     || local.any_subnet_disabled
     || local.any_nsg_disabled
@@ -38,7 +38,6 @@ locals {
 
 resource "terraform_data" "destroy_guard" {
   input = {
-    enabled           = var.enabled
     allow_destroy     = var.allow_destroy
     any_delete_intent = local.any_delete_intent
   }
@@ -46,18 +45,18 @@ resource "terraform_data" "destroy_guard" {
   lifecycle {
     precondition {
       condition     = !local.any_delete_intent || (local.any_delete_intent && var.allow_destroy)
-      error_message = "Deletion blocked. You have delete intent (global enabled=false OR some resources enabled=false) but allow_destroy=false. Set allow_destroy=true to proceed."
+      error_message = "Deletion blocked. You have delete intent (some resources have create=false) but allow_destroy=false. Set allow_destroy=true to proceed."
     }
   }
 }
 
 locals {
-  # Map from "vnet_key.subnet_key" -> nsg id for enabled associations. Used
+  # Map from "vnet_key.subnet_key" -> nsg id for associations with create=true. Used
   # to populate the subnet.networkSecurityGroup property so the azapi subnet
   # body matches the association resource (prevents provider-side flips).
   subnet_nsg_map = {
     for k, a in local.effective_nsg_associations :
-    "${a.vnet_key}.${a.subnet_key}" => (!try(a.enabled, true) || !var.create_associations) ? null : local.nsg_ids[a.nsg_key]
+    "${a.vnet_key}.${a.subnet_key}" => !try(a.create, true) ? null : local.nsg_ids[a.nsg_key]
   }
 }
 
@@ -67,7 +66,7 @@ locals {
 
 # AVM composition pattern: RG + VNet + NSG modules together 
 module "rg" {
-  count = (var.enabled && var.create_resource_group && local.effective_resource_group.enabled && local.effective_resource_group.create) ? 1 : 0
+  count = local.effective_resource_group.create ? 1 : 0
 
   # NOTE: Keep this as AVM source + pinned version.
   # If your registry name differs, only change source/version; do NOT change tfvars schema.
@@ -81,16 +80,16 @@ module "rg" {
 }
 
 data "azurerm_resource_group" "rg" {
-  count = (var.enabled && var.create_resource_group && local.effective_resource_group.enabled && !local.effective_resource_group.create) ? 1 : 0
+  count = (!local.effective_resource_group.create) ? 1 : 0
   name  = local.effective_resource_group.name
 }
 
 locals {
-  rg_name = var.create_resource_group ? (
+  rg_name = local.effective_resource_group.create ? (
     local.effective_resource_group.create ? one(module.rg[*].name) : one(data.azurerm_resource_group.rg[*].name)
   ) : local.effective_resource_group.name
 
-  rg_location = var.create_resource_group ? (
+  rg_location = local.effective_resource_group.create ? (
     local.effective_resource_group.create ? one(module.rg[*].location) : one(data.azurerm_resource_group.rg[*].location)
   ) : local.effective_resource_group.location
 }
@@ -100,7 +99,7 @@ locals {
 ########################################
 
 module "nsg" {
-  for_each = { for k, n in local.effective_nsg_configs : k => n if var.enabled && var.create_nsgs && try(n.enabled, true) && n.create_nsg }
+  for_each = { for k, n in local.effective_nsg_configs : k => n if try(n.create, true) }
 
   source  = "Azure/avm-res-network-networksecuritygroup/azurerm"
   version = "0.5.0"
@@ -118,7 +117,7 @@ module "nsg" {
 }
 
 data "azurerm_network_security_group" "existing" {
-  for_each = { for k, n in local.effective_nsg_configs : k => n if var.enabled && var.create_nsgs && try(n.enabled, true) && !n.create_nsg }
+  for_each = { for k, n in local.effective_nsg_configs : k => n if !try(n.create, true) }
 
   name                = coalesce(try(each.value.existing_nsg_name, null), try(each.value.nsg_name, null))
   resource_group_name = coalesce(try(each.value.existing_rg_name, null), local.rg_name)
@@ -128,13 +127,7 @@ locals {
   nsg_ids = {
     for k, n in local.effective_nsg_configs :
     k => (
-      # disabled entries map to null
-      !try(n.enabled, true) ? null : (
-        # if NSG management is disabled, prefer any provided existing id, otherwise null
-        !var.create_nsgs ? coalesce(try(n.existing_nsg_id, null), null) : (
-          n.create_nsg ? module.nsg[k].resource_id : coalesce(try(n.existing_nsg_id, null), data.azurerm_network_security_group.existing[k].id)
-        )
-      )
+      try(n.create, true) ? module.nsg[k].resource_id : coalesce(try(n.existing_nsg_id, null), try(data.azurerm_network_security_group.existing[k].id, null), null)
     )
   }
 }
@@ -144,7 +137,7 @@ locals {
 ########################################
 
 module "vnet" {
-  for_each = { for k, v in local.vnet_flat : k => v if var.enabled && var.create_vnets && try(v.enabled, true) }
+  for_each = { for k, v in local.vnet_flat : k => v if try(v.create, true) }
 
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "0.8.0"
@@ -162,7 +155,7 @@ module "vnet" {
 
   tags = merge(local.effective_resource_group.tags, try(each.value.tags, {}))
 
-  # Only enabled subnets are created.
+  # Only subnets with `create = true` are created.
   # Module expects a map(object). We preserve the original keys as the map keys and
   # ensure each subnet object contains a `name` attribute (required by the module).
   subnets = {
@@ -201,7 +194,7 @@ module "vnet" {
 
       timeouts         = try(sn.timeouts, null)
       role_assignments = try(sn.role_assignments, null)
-    } if try(sn.enabled, true)
+    } if try(sn.create, true)
   }
 }
 
@@ -212,7 +205,7 @@ module "vnet" {
 ########################################
 
 resource "azurerm_subnet_network_security_group_association" "assoc" {
-  for_each = { for k, a in local.effective_nsg_associations : k => a if var.enabled && var.create_associations && try(a.enabled, true) }
+  for_each = { for k, a in local.effective_nsg_associations : k => a if try(a.create, true) }
 
   subnet_id                 = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
   network_security_group_id = local.nsg_ids[each.value.nsg_key]

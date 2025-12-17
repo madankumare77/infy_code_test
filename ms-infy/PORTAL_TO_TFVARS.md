@@ -9,7 +9,7 @@
 
 ## Virtual Network (Portal: Basics)
 - VNet name: virtual_networks.<outer>.<vnetKey>  (vnetKey)
-- Enabled toggle: virtual_networks.<outer>.<vnetKey>.enabled
+- Create toggle: virtual_networks.<outer>.<vnetKey>.create
 - Location: virtual_networks.<outer>.<vnetKey>.location
 - Tags: virtual_networks.<outer>.<vnetKey>.tags
 
@@ -27,7 +27,7 @@
 
 ## Subnet (Portal: Subnets)
 - Subnet name: ...subnet_configs.<subnetKey>
-- Enabled toggle (remove only 1 subnet): ...subnet_configs.<subnetKey>.enabled
+- Create toggle (remove only 1 subnet): ...subnet_configs.<subnetKey>.create
 - Address range: ...subnet_configs.<subnetKey>.address_prefix
 
 ## Subnet (Portal: Service endpoints)
@@ -43,8 +43,8 @@
 ---
 
 ## NSG (Portal: Basics)
-- Create vs import: nsg_configs.<nsgKey>.create_nsg
-- Enabled toggle: nsg_configs.<nsgKey>.enabled
+- Create vs import: nsg_configs.<nsgKey>.create
+- Create toggle: nsg_configs.<nsgKey>.create
 - Name: nsg_configs.<nsgKey>.nsg_name
 
 ## NSG (Portal: Inbound/Outbound rules)
@@ -54,7 +54,7 @@
 
 ## NSG <-> Subnet association (Portal: Subnet > Network security group)
 Use associations for maximum flexibility:
-- nsg_associations.<assocKey> = { vnet_key, subnet_key, nsg_key, enabled }
+- nsg_associations.<assocKey> = { vnet_key, subnet_key, nsg_key, create }
 
 This lets you attach:
 - 1 NSG to many subnets

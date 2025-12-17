@@ -2,7 +2,7 @@ locals {
   virtual_networks = {
     vnet1 = {
       cind-claims = {
-        enabled                = true
+        create                 = true
         location               = "centralindia"
         address_space          = "100.122.96.0/24"
         enable_ddos_protection = false
@@ -11,24 +11,24 @@ locals {
 
         subnet_configs = {
           cind-pvt = {
-            enabled           = true
+            create            = true
             address_prefix    = "100.122.96.0/27"
             service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
           }
 
           cind-cosmosdb = {
-            enabled           = true
+            create            = true
             address_prefix    = "100.122.96.32/28"
             service_endpoints = ["Microsoft.AzureCosmosDB"]
           }
 
           cind-aiservice = {
-            enabled        = true
+            create         = true
             address_prefix = "100.122.96.48/28"
           }
 
           cind-funtionsapp = {
-            enabled           = true
+            create            = true
             address_prefix    = "100.122.96.64/28"
             service_endpoints = ["Microsoft.Storage", "Microsoft.Web"]
             delegation = {
@@ -43,7 +43,7 @@ locals {
       }
 
       cind-claims2 = {
-        enabled                = true
+        create                 = true
         location               = "centralindia"
         address_space          = "101.122.96.0/24"
         enable_ddos_protection = false
@@ -52,12 +52,12 @@ locals {
 
         subnet_configs = {
           cind-pvt = {
-            enabled           = true
+            create            = true
             address_prefix    = "101.122.96.0/27"
             service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
           }
           cind-aiservice = {
-            enabled        = true
+            create         = true
             address_prefix = "101.122.96.48/28"
             delegation = {
               name = "functionapp"
@@ -74,9 +74,8 @@ locals {
 
   nsg_configs = {
     nsg1 = {
-      enabled    = true
-      create_nsg = true
-      nsg_name   = "nsg-infy-test2"
+      create   = true
+      nsg_name = "nsg-infy-test2"
       security_rules = [
         {
           name                       = "Allow-InBound"
@@ -93,9 +92,8 @@ locals {
     }
 
     nsg2 = {
-      enabled    = true
-      create_nsg = true
-      nsg_name   = "nsg-infy-test"
+      create   = true
+      nsg_name = "nsg-infy-test"
       security_rules = [
         {
           name                       = "Allow-InBound"
@@ -112,36 +110,35 @@ locals {
     }
 
     nsg_existing = {
-      enabled           = true
-      create_nsg        = false
+      create            = false
       existing_nsg_name = "infy-manual-nsg"
     }
   }
 
   nsg_associations = {
     assoc_pvt = {
-      enabled    = true
+      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-pvt"
       nsg_key    = "nsg1"
     }
 
     assoc_func = {
-      enabled    = true
+      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-funtionsapp"
       nsg_key    = "nsg1"
     }
 
     assoc_cosmos = {
-      enabled    = true
+      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-cosmosdb"
       nsg_key    = "nsg2"
     }
 
     assoc_aiservice = {
-      enabled    = true
+      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-aiservice"
       nsg_key    = "nsg_existing"
@@ -159,7 +156,6 @@ locals {
   # Resource group defaults (migrated from env tfvars). Use
   # local.effective_resource_group in place of the old `var.resource_group`.
   resource_group = {
-    enabled  = true
     create   = false
     name     = "madan-test"
     location = "centralindia"
