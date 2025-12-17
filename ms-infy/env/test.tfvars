@@ -59,12 +59,30 @@ virtual_networks = {
         }
       }
     }
+    cind-claims2 = {
+      enabled                = true
+      location               = "centralindia"
+      address_space          = "101.122.96.0/24"
+      enable_ddos_protection = false
+      dns_servers            = []
+      tags = {
+        created_by = "terraform"
+      }
+
+      subnet_configs = {
+        cind-pvt = {
+          enabled           = true
+          address_prefix    = "101.122.96.0/27"
+          service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
+        }
+      }
+    }
   }
 }
 
 # FIX: keys must be unique. Use nsg_created and nsg_existing, not duplicate nsg1.
 nsg_configs = {
-  nsg_created2 = {
+  nsg1 = {
     enabled    = true
     create_nsg = true
     nsg_name   = "nsg-infy-test2"
@@ -84,7 +102,7 @@ nsg_configs = {
       }
     ]
   }
-  nsg_created = {
+  nsg2 = {
     enabled    = true
     create_nsg = true
     nsg_name   = "nsg-infy-test"
@@ -118,21 +136,21 @@ nsg_associations = {
     enabled    = true
     vnet_key   = "cind-claims"
     subnet_key = "cind-pvt"
-    nsg_key    = "nsg_created"
+    nsg_key    = "nsg1"
   }
 
   assoc_func = {
     enabled    = true
     vnet_key   = "cind-claims"
     subnet_key = "cind-funtionsapp"
-    nsg_key    = "nsg_created"
+    nsg_key    = "nsg1"
   }
 
   assoc_cosmos = {
     enabled    = true
     vnet_key   = "cind-claims"
     subnet_key = "cind-cosmosdb"
-    nsg_key    = "nsg_created2"
+    nsg_key    = "nsg2"
   }
 
   assoc_aiservice = {
