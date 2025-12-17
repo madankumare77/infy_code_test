@@ -241,6 +241,7 @@ resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
 # Private DNS Zones (AVM)
 ########################################
 
+
 module "private_dns_zone" {
   source   = "Azure/avm-res-network-privatednszone/azurerm"
   for_each = var.private_dns_zones
@@ -248,16 +249,18 @@ module "private_dns_zone" {
   domain_name = each.value.name
   parent_id   = local.rg_id
 
-  # IMPORTANT: list of objects; each must have name (or vnetlinkname)
-  virtual_network_links = [
-    for vnet_key in each.value.vnet_keys : {
-      name               = "${each.key}-${vnet_key}" # ✅ satisfies module validation
+  virtual_network_links = {
+    for vnet_key in each.value.vnet_keys :
+    "${each.key}-${vnet_key}" => {
+      name               = "${each.key}-${vnet_key}"
+      vnetlinkname       = "${each.key}-${vnet_key}"
       virtual_network_id = local.vnet_resource_id_by_key[vnet_key]
     }
-  ]
+  }
 
   tags = merge(var.tags, try(each.value.tags, {}))
 }
+
 
 ########################################
 # Identities (native)
