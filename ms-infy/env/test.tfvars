@@ -85,9 +85,9 @@ nsg_configs = {
     ]
   }
   nsg_existing = {
-    enabled         = true
-    create_nsg      = false
-    existing_nsg_name = "infy-manual-nsg"     # or existing_nsg_id = "/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/networkSecurityGroups/infy-manual-nsg"
+    enabled           = true
+    create_nsg        = false
+    existing_nsg_name = "infy-manual-nsg" # or existing_nsg_id = "/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/networkSecurityGroups/infy-manual-nsg"
     #existing_rg_name  = "madan-test"          # set if NSG is in a different RG than the VNet
   }
 }
