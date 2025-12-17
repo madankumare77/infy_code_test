@@ -99,7 +99,9 @@ variable "nsg_configs" {
     enabled    = optional(bool, true)
     create_nsg = bool
 
-    nsg_name = string
+    # Name of the NSG when creating. For imported NSGs, prefer providing
+    # `existing_nsg_name` or `existing_nsg_id` instead of `nsg_name`.
+    nsg_name = optional(string)
     location = optional(string)
     rg_name  = optional(string)
     tags     = optional(map(string), {})
@@ -123,6 +125,20 @@ variable "nsg_configs" {
       description                = optional(string)
     })), [])
   }))
+
+  validation {
+    condition = alltrue([
+      for k, n in var.nsg_configs : (
+        # If create_nsg=true then nsg_name must be provided.
+        n.create_nsg ? (try(n.nsg_name, "") != "") : (
+          # If create_nsg=false then either existing_nsg_id or existing_nsg_name must be provided.
+          (try(n.existing_nsg_id, null) != null) || (try(n.existing_nsg_name, null) != null)
+        )
+      )
+    ])
+
+    error_message = "Each nsg_configs entry must either: provide 'nsg_name' when 'create_nsg=true', or provide 'existing_nsg_name' or 'existing_nsg_id' when 'create_nsg=false'."
+  }
 
   validation {
     condition = alltrue([
