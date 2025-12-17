@@ -64,6 +64,26 @@ virtual_networks = {
 
 # FIX: keys must be unique. Use nsg_created and nsg_existing, not duplicate nsg1.
 nsg_configs = {
+  nsg_created2 = {
+    enabled    = true
+    create_nsg = true
+    nsg_name   = "nsg-infy-test2"
+    #location    = "centralindia"
+    #rg_name     = "madan-test"
+    security_rules = [
+      {
+        name                       = "Allow-InBound"
+        priority                   = 500
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_address_prefix      = "*"
+        destination_address_prefix = "VirtualNetwork"
+        source_port_range          = "*"
+        destination_port_range     = "443"
+      }
+    ]
+  }
   nsg_created = {
     enabled    = true
     create_nsg = true
@@ -106,6 +126,13 @@ nsg_associations = {
     vnet_key   = "cind-claims"
     subnet_key = "cind-funtionsapp"
     nsg_key    = "nsg_created"
+  }
+
+  assoc_cosmos = {
+    enabled    = true
+    vnet_key   = "cind-claims"
+    subnet_key = "cind-cosmosdb"
+    nsg_key    = "nsg_created2"
   }
 
   assoc_aiservice = {
