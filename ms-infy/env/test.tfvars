@@ -85,24 +85,10 @@ nsg_configs = {
     ]
   }
   nsg_existing = {
-    enabled    = true
-    create_nsg = false
-    nsg_name   = "infy-manual-nsg"
-    #location    = "centralindia"
-    #rg_name     = "madan-test"
-    security_rules = [
-      {
-        name                       = "Allow-InBound"
-        priority                   = 500
-        direction                  = "Inbound"
-        access                     = "Allow"
-        protocol                   = "Tcp"
-        source_address_prefix      = "*"
-        destination_address_prefix = "VirtualNetwork"
-        source_port_range          = "*"
-        destination_port_range     = "443"
-      }
-    ]
+    enabled         = true
+    create_nsg      = false
+    existing_nsg_name = "infy-manual-nsg"     # or existing_nsg_id = "/subscriptions/.../resourceGroups/.../providers/Microsoft.Network/networkSecurityGroups/infy-manual-nsg"
+    #existing_rg_name  = "madan-test"          # set if NSG is in a different RG than the VNet
   }
 }
 
@@ -121,7 +107,8 @@ nsg_associations = {
     subnet_key = "cind-funtionsapp"
     nsg_key    = "nsg_created"
   }
-  assoc_ = {
+
+  assoc_aiservice = {
     enabled    = true
     vnet_key   = "cind-claims"
     subnet_key = "cind-aiservice"
