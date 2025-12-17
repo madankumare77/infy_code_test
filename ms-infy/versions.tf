@@ -1,12 +1,13 @@
 
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">= 3.116.0, < 4.0.0"
+      # Allow both compatible 3.x and 4.x releases so module constraints can resolve
+      version = ">= 3.116.0, < 5.0.0"
     }
     azuread = {
       source  = "hashicorp/azuread"
@@ -15,7 +16,7 @@ terraform {
   }
 
   # This removes your backend warning in pipeline
-  backend "azurerm" {}
+  # backend "azurerm" {}
 }
 
 

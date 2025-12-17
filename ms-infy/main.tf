@@ -58,7 +58,8 @@ module "rg" {
   # NOTE: Keep this as AVM source + pinned version.
   # If your registry name differs, only change source/version; do NOT change tfvars schema.
   source  = "Azure/avm-res-resources-resourcegroup/azurerm"
-  version = "0.1.0"
+  # Bump to a version that supports azurerm >=3.71 and <5.0 so it can interoperate with other modules
+  version = "0.2.1"
 
   name     = var.resource_group.name
   location = var.resource_group.location
