@@ -138,28 +138,21 @@ module "vnet" {
   location            = each.value.location
 
   address_space = [each.value.address_space]
-  # pass an empty list when not set; module expects a list of DNS servers (not null)
-  dns_servers = try(each.value.dns_servers, [])
+  # Module expects an object: { dns_servers = set(string) } or null.
+  # Convert incoming list to the expected object when present, otherwise pass null.
+  dns_servers = try(each.value.dns_servers, null) != null ? { dns_servers = toset(each.value.dns_servers) } : null
 
   #enable_ddos_protection = each.value.enable_ddos_protection
 
   tags = merge(var.resource_group.tags, try(each.value.tags, {}))
 
   # Only enabled subnets are created.
-  # Module expects a list of subnet objects that include a `name` attribute.
-  subnets = [
-    for sn_k, sn in each.value.subnet_configs : {
-      name              = sn_k
-      address_prefixes  = [sn.address_prefix]
-      service_endpoints = try(sn.service_endpoints, null)
-      delegation        = try(sn.delegation, null)
-
-      private_endpoint_network_policies_enabled     = try(sn.private_endpoint_network_policies_enabled, true)
-      private_link_service_network_policies_enabled = try(sn.private_link_service_network_policies_enabled, true)
-
-      route_table_id = try(sn.route_table_id, null)
-    } if try(sn.enabled, true)
-  ]
+  # Module expects a map(object). We preserve the original keys as the map keys and
+  # ensure each subnet object contains a `name` attribute (required by the module).
+  subnets = {
+    for sn_k, sn in each.value.subnet_configs : sn_k => merge(sn, { name = sn_k })
+    if try(sn.enabled, true)
+  }
 }
 
 ########################################
