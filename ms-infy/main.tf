@@ -164,19 +164,19 @@ module "vnet" {
       # delegation: module expects a list(object) when present
       delegation = try(sn.delegation, null) != null ? [sn.delegation] : null
 
-      private_endpoint_network_policies = try(sn.private_endpoint_network_policies, null)
+      private_endpoint_network_policies             = try(sn.private_endpoint_network_policies, null)
       private_link_service_network_policies_enabled = try(sn.private_link_service_network_policies_enabled, true)
 
       # route_table can be provided either as { id = ... } or via route_table_id in tfvars
       route_table = try(sn.route_table, null) != null ? sn.route_table : (try(sn.route_table_id, null) != null ? { id = sn.route_table_id } : null)
 
-      nat_gateway = try(sn.nat_gateway, null)
-      network_security_group = try(sn.network_security_group, null)
-      service_endpoint_policies = try(sn.service_endpoint_policies, null)
+      nat_gateway                     = try(sn.nat_gateway, null)
+      network_security_group          = try(sn.network_security_group, null)
+      service_endpoint_policies       = try(sn.service_endpoint_policies, null)
       default_outbound_access_enabled = try(sn.default_outbound_access_enabled, null)
-      sharing_scope = try(sn.sharing_scope, null)
+      sharing_scope                   = try(sn.sharing_scope, null)
 
-      timeouts = try(sn.timeouts, null)
+      timeouts         = try(sn.timeouts, null)
       role_assignments = try(sn.role_assignments, null)
     } if try(sn.enabled, true)
   }
