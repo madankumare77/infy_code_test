@@ -197,7 +197,7 @@ module "vnet" {
       # When an association exists for this vnet.subnet, explicitly set the
       # subnet's networkSecurityGroup property so the azapi subnet resource's
       # body matches the association resource and avoids churn.
-      network_security_group = local.subnet_nsg_map["${each.key}.${sn_k}"] != null ? { id = local.subnet_nsg_map["${each.key}.${sn_k}"] } : null
+      network_security_group = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) != null ? { id = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) } : null
 
       timeouts         = try(sn.timeouts, null)
       role_assignments = try(sn.role_assignments, null)
