@@ -146,6 +146,12 @@ locals {
       subnet_key = "cind-aiservice"
       nsg_key    = "nsg_existing"
     }
+    assoc2_aiservice2 = {
+      enabled    = true
+      vnet_key   = "cind-claims2"
+      subnet_key = "cind-aiservice"
+      nsg_key    = "nsg_existing"
+    }
   }
 
   # Wrap the inner maps into tomap() so types match the declared
