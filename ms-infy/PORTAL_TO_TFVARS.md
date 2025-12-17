@@ -27,7 +27,7 @@
 
 ## Subnet (Portal: Subnets)
 - Subnet name: ...subnet_configs.<subnetKey>
-- Create toggle (remove only 1 subnet): ...subnet_configs.<subnetKey>.create
+- Presence controls: include the subnet entry to create it; remove or comment out the subnet entry to delete it.
 - Address range: ...subnet_configs.<subnetKey>.address_prefix
 
 ## Subnet (Portal: Service endpoints)

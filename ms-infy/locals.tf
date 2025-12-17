@@ -11,24 +11,20 @@ locals {
 
         subnet_configs = {
           cind-pvt = {
-            create            = true
             address_prefix    = "100.122.96.0/27"
             service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
           }
 
           cind-cosmosdb = {
-            create            = true
             address_prefix    = "100.122.96.32/28"
             service_endpoints = ["Microsoft.AzureCosmosDB"]
           }
 
           cind-aiservice = {
-            create         = true
             address_prefix = "100.122.96.48/28"
           }
 
           cind-funtionsapp = {
-            create            = true
             address_prefix    = "100.122.96.64/28"
             service_endpoints = ["Microsoft.Storage", "Microsoft.Web"]
             delegation = {
@@ -52,12 +48,10 @@ locals {
 
         subnet_configs = {
           cind-pvt = {
-            create            = true
             address_prefix    = "101.122.96.0/27"
             service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
           }
           cind-aiservice = {
-            create         = true
             address_prefix = "101.122.96.48/28"
             delegation = {
               name = "functionapp"

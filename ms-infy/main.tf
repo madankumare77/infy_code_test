@@ -26,28 +26,6 @@ locals {
 
   any_nsg_disabled   = anytrue([for k, n in local.effective_nsg_configs : !try(n.create, true)])
   any_assoc_disabled = anytrue([for k, a in local.effective_nsg_associations : !try(a.create, true)])
-
-  any_delete_intent = (
-    !local.effective_resource_group.create
-    || local.any_vnet_disabled
-    || local.any_subnet_disabled
-    || local.any_nsg_disabled
-    || local.any_assoc_disabled
-  )
-}
-
-resource "terraform_data" "destroy_guard" {
-  input = {
-    allow_destroy     = var.allow_destroy
-    any_delete_intent = local.any_delete_intent
-  }
-
-  lifecycle {
-    precondition {
-      condition     = !local.any_delete_intent || (local.any_delete_intent && var.allow_destroy)
-      error_message = "Deletion blocked. You have delete intent (some resources have create=false) but allow_destroy=false. Set allow_destroy=true to proceed."
-    }
-  }
 }
 
 locals {
@@ -155,7 +133,9 @@ module "vnet" {
 
   tags = merge(local.effective_resource_group.tags, try(each.value.tags, {}))
 
-  # Only subnets with `create = true` are created.
+  # Subnets are created when they exist in the `subnet_configs` map. Removing
+  # or commenting out a subnet entry in `ms-infy/locals.tf` will remove
+  # (destroy) that subnet on apply.
   # Module expects a map(object). We preserve the original keys as the map keys and
   # ensure each subnet object contains a `name` attribute (required by the module).
   subnets = {
@@ -194,7 +174,7 @@ module "vnet" {
 
       timeouts         = try(sn.timeouts, null)
       role_assignments = try(sn.role_assignments, null)
-    } if try(sn.create, true)
+    }
   }
 }
 
