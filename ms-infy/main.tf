@@ -51,6 +51,16 @@ resource "terraform_data" "destroy_guard" {
   }
 }
 
+locals {
+  # Map from "vnet_key.subnet_key" -> nsg id for enabled associations. Used
+  # to populate the subnet.networkSecurityGroup property so the azapi subnet
+  # body matches the association resource (prevents provider-side flips).
+  subnet_nsg_map = {
+    for k, a in local.effective_nsg_associations :
+    "${a.vnet_key}.${a.subnet_key}" => (!try(a.enabled, true) || !var.create_associations) ? null : local.nsg_ids[a.nsg_key]
+  }
+}
+
 ########################################
 # Resource Group: create (AVM) or import existing
 ########################################
@@ -98,7 +108,9 @@ module "nsg" {
   name                = each.value.nsg_name
   resource_group_name = local.rg_name
   location            = coalesce(try(each.value.location, null), local.rg_location)
-  tags                = merge(local.effective_resource_group.tags, try(each.value.tags, {}))
+  # If there are no tags, send `null` instead of an empty map to avoid a
+  # one-time provider diff where Azure reflects an empty tag set.
+  tags = length(merge(local.effective_resource_group.tags, try(each.value.tags, {}))) > 0 ? merge(local.effective_resource_group.tags, try(each.value.tags, {})) : null
 
   # Module expects a map(object) keyed by rule name. Convert list -> map when provided.
   security_rules = length(try(each.value.security_rules, [])) > 0 ? { for r in each.value.security_rules : r.name => r } : {}
@@ -181,6 +193,11 @@ module "vnet" {
       service_endpoint_policies       = try(sn.service_endpoint_policies, null)
       default_outbound_access_enabled = try(sn.default_outbound_access_enabled, null)
       sharing_scope                   = try(sn.sharing_scope, null)
+
+      # When an association exists for this vnet.subnet, explicitly set the
+      # subnet's networkSecurityGroup property so the azapi subnet resource's
+      # body matches the association resource and avoids churn.
+      network_security_group = local.subnet_nsg_map["${each.key}.${sn_k}"] != null ? { id = local.subnet_nsg_map["${each.key}.${sn_k}"] } : null
 
       timeouts         = try(sn.timeouts, null)
       role_assignments = try(sn.role_assignments, null)
