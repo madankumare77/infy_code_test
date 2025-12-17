@@ -2,7 +2,7 @@ locals {
   virtual_networks = {
     vnet1 = {
       cind-claims = {
-        create                 = true
+        create                 = false
         location               = "centralindia"
         address_space          = "100.122.96.0/24"
         enable_ddos_protection = false
@@ -39,7 +39,7 @@ locals {
       }
 
       cind-claims2 = {
-        create                 = true
+        create                 = false
         location               = "centralindia"
         address_space          = "101.122.96.0/24"
         enable_ddos_protection = false
@@ -67,72 +67,72 @@ locals {
   }
 
   nsg_configs = {
-    nsg1 = {
-      create   = true
-      nsg_name = "nsg-infy-test2"
-      security_rules = [
-        {
-          name                       = "Allow-InBound"
-          priority                   = 500
-          direction                  = "Inbound"
-          access                     = "Allow"
-          protocol                   = "Tcp"
-          source_address_prefix      = "*"
-          destination_address_prefix = "VirtualNetwork"
-          source_port_range          = "*"
-          destination_port_range     = "443"
-        }
-      ]
-    }
+    # nsg1 = {
+    #   create   = true
+    #   nsg_name = "nsg-infy-test2"
+    #   security_rules = [
+    #     {
+    #       name                       = "Allow-InBound"
+    #       priority                   = 500
+    #       direction                  = "Inbound"
+    #       access                     = "Allow"
+    #       protocol                   = "Tcp"
+    #       source_address_prefix      = "*"
+    #       destination_address_prefix = "VirtualNetwork"
+    #       source_port_range          = "*"
+    #       destination_port_range     = "443"
+    #     }
+    #   ]
+    # }
 
-    nsg2 = {
-      create   = true
-      nsg_name = "nsg-infy-test"
-      security_rules = [
-        {
-          name                       = "Allow-InBound"
-          priority                   = 500
-          direction                  = "Inbound"
-          access                     = "Allow"
-          protocol                   = "Tcp"
-          source_address_prefix      = "*"
-          destination_address_prefix = "VirtualNetwork"
-          source_port_range          = "*"
-          destination_port_range     = "443"
-        }
-      ]
-    }
+    # nsg2 = {
+    #   create   = true
+    #   nsg_name = "nsg-infy-test"
+    #   security_rules = [
+    #     {
+    #       name                       = "Allow-InBound"
+    #       priority                   = 500
+    #       direction                  = "Inbound"
+    #       access                     = "Allow"
+    #       protocol                   = "Tcp"
+    #       source_address_prefix      = "*"
+    #       destination_address_prefix = "VirtualNetwork"
+    #       source_port_range          = "*"
+    #       destination_port_range     = "443"
+    #     }
+    #   ]
+    # }
 
-    nsg_existing = {
-      create            = false
-      existing_nsg_name = "infy-manual-nsg"
-    }
+    # nsg_existing = {
+    #   create            = false
+    #   existing_nsg_name = "infy-manual-nsg"
+    # }
   }
 
   nsg_associations = {
-    assoc_pvt = {
-      vnet_key   = "cind-claims"
-      subnet_key = "cind-pvt"
-      nsg_key    = "nsg1"
-    }
+    # assoc_pvt = {
+    #   vnet_key   = "cind-claims"
+    #   subnet_key = "cind-pvt"
+    #   nsg_key    = "nsg1"
+    # }
 
-    assoc_func = {
-      vnet_key   = "cind-claims"
-      subnet_key = "cind-funtionsapp"
-      nsg_key    = "nsg1"
-    }
+    # assoc_func = {
+    #   vnet_key   = "cind-claims"
+    #   subnet_key = "cind-funtionsapp"
+    #   nsg_key    = "nsg1"
+    # }
 
-    assoc_cosmos = {
-      vnet_key   = "cind-claims"
-      subnet_key = "cind-cosmosdb"
-      nsg_key    = "nsg2"
-    }
+    # assoc_cosmos = {
+    #   vnet_key   = "cind-claims"
+    #   subnet_key = "cind-cosmosdb"
+    #   nsg_key    = "nsg2"
+    # }
 
-    assoc_aiservice = {
-      vnet_key   = "cind-claims"
-      subnet_key = "cind-aiservice"
-      nsg_key    = "nsg_existing"
-    }
+    # assoc_aiservice = {
+    #   vnet_key   = "cind-claims"
+    #   subnet_key = "cind-aiservice"
+    #   nsg_key    = "nsg_existing"
+    # }
   }
 
   # Wrap the inner maps into tomap() so types match the declared
