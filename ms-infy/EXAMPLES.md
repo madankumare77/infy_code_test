@@ -11,7 +11,7 @@ Minimal flow to add more NSGs/VNets:
 2. Add another entry into `nsg_configs` with a unique key and `create = true` (or set existing reference fields for an imported NSG and `create = false`).
 3. Create an assoc entry in `nsg_associations` pointing the subnet to the NSG.
 
-See `ms-infy/locals.tf` for a working sample of defaults that create two VNets and two NSGs and attach them to subnets. Note that the locals use resource-specific `create` flags for VNets, Subnets, NSGs and associations to control creation/import behavior.
+See `ms-infy/locals.tf` for a working sample of defaults that create two VNets and two NSGs and attach them to subnets. Note that the locals use resource-specific `create` flags for VNets, Subnets, and NSGs to control creation/import behavior; **associations are created when an entry exists in `nsg_associations` — removing the entry will remove the association.**
 
 Note about environment defaults:
 

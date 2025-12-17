@@ -55,6 +55,9 @@
 ## NSG <-> Subnet association (Portal: Subnet > Network security group)
 Use associations for maximum flexibility:
 - nsg_associations.<assocKey> = { vnet_key, subnet_key, nsg_key, create }
+ - nsg_associations.<assocKey> = { vnet_key, subnet_key, nsg_key }
+
+Note: presence of the association entry controls creation — remove or comment out the entry to remove the association.
 
 This lets you attach:
 - 1 NSG to many subnets

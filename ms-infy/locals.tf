@@ -111,28 +111,24 @@ locals {
 
   nsg_associations = {
     assoc_pvt = {
-      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-pvt"
       nsg_key    = "nsg1"
     }
 
     assoc_func = {
-      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-funtionsapp"
       nsg_key    = "nsg1"
     }
 
     assoc_cosmos = {
-      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-cosmosdb"
       nsg_key    = "nsg2"
     }
 
     assoc_aiservice = {
-      create     = true
       vnet_key   = "cind-claims"
       subnet_key = "cind-aiservice"
       nsg_key    = "nsg_existing"

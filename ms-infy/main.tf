@@ -24,17 +24,16 @@ locals {
     ]
   ]))
 
-  any_nsg_disabled   = anytrue([for k, n in local.effective_nsg_configs : !try(n.create, true)])
-  any_assoc_disabled = anytrue([for k, a in local.effective_nsg_associations : !try(a.create, true)])
+  any_nsg_disabled = anytrue([for k, n in local.effective_nsg_configs : !try(n.create, true)])
 }
 
 locals {
-  # Map from "vnet_key.subnet_key" -> nsg id for associations with create=true. Used
+  # Map from "vnet_key.subnet_key" -> nsg id for associations. Used
   # to populate the subnet.networkSecurityGroup property so the azapi subnet
   # body matches the association resource (prevents provider-side flips).
   subnet_nsg_map = {
     for k, a in local.effective_nsg_associations :
-    "${a.vnet_key}.${a.subnet_key}" => !try(a.create, true) ? null : local.nsg_ids[a.nsg_key]
+    "${a.vnet_key}.${a.subnet_key}" => try(local.nsg_ids[a.nsg_key], null)
   }
 }
 
@@ -185,7 +184,10 @@ module "vnet" {
 ########################################
 
 resource "azurerm_subnet_network_security_group_association" "assoc" {
-  for_each = { for k, a in local.effective_nsg_associations : k => a if try(a.create, true) }
+  # Associations are created for every entry present in `local.effective_nsg_associations`.
+  # Removing an entry from the map (e.g., comment/remove it from `ms-infy/locals.tf`) will
+  # cause Terraform to plan the association's destruction on the next apply.
+  for_each = { for k, a in local.effective_nsg_associations : k => a }
 
   subnet_id                 = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
   network_security_group_id = local.nsg_ids[each.value.nsg_key]
