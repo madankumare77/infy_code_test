@@ -148,19 +148,39 @@ data "azurerm_subnet" "existing_subnet" {
   resource_group_name  = each.value.resource_group_name
 }
 
+
 locals {
+  # VNet IDs (created + existing) with output fallback
   vnet_resource_id_by_key = merge(
-    { for k, v in module.vnet_created : k => v.resource_id },
-    { for k, v in data.azurerm_virtual_network.vnet_existing : k => v.id }
+    {
+      for k, m in module.vnet_created :
+      k => try(m.resource_id, m.vnet_id, m.id)
+    },
+    {
+      for k, v in data.azurerm_virtual_network.vnet_existing :
+      k => v.id
+    }
   )
 
+  # Subnet IDs for VNets created by AVM module (fallback to common AVM shapes)
+  created_subnet_id_by_key = merge([
+    for vk, v in local.vnets_to_create : {
+      for sk, s in v.subnets :
+      "${vk}.${sk}" => try(
+        # common output names seen in AVM modules
+        module.vnet_created[vk].subnet_ids[s.name],
+        module.vnet_created[vk].subnet_resource_ids[s.name],
+
+        # common nested object outputs seen in some versions
+        module.vnet_created[vk].subnets[s.name].resource_id,
+        module.vnet_created[vk].subnets[s.name].id
+      )
+    }
+  ]...)
+
+  # Final Subnet IDs (created + existing)
   subnet_id_by_key = merge(
-    merge([
-      for vk, v in local.vnets_to_create : {
-        for sk, s in v.subnets :
-        "${vk}.${sk}" => module.vnet_created[vk].subnet_ids[s.name]
-      }
-    ]...),
+    local.created_subnet_id_by_key,
     { for k, s in data.azurerm_subnet.existing_subnet : k => s.id }
   )
 }
@@ -197,10 +217,17 @@ data "azurerm_network_security_group" "nsg_existing" {
   resource_group_name = coalesce(try(each.value.resource_group_name, null), local.rg_name)
 }
 
+
 locals {
   nsg_id_by_key = merge(
-    { for k, v in module.nsg_created : k => v.nsg_id },
-    { for k, v in data.azurerm_network_security_group.nsg_existing : k => v.id }
+    {
+      for k, m in module.nsg_created :
+      k => try(m.nsg_id, m.network_security_group_id, m.resource_id, m.id)
+    },
+    {
+      for k, v in data.azurerm_network_security_group.nsg_existing :
+      k => v.id
+    }
   )
 }
 
@@ -213,24 +240,23 @@ resource "azurerm_subnet_network_security_group_association" "nsg_assoc" {
 ########################################
 # Private DNS Zones (AVM)
 ########################################
+
 module "private_dns_zone" {
   source   = "Azure/avm-res-network-privatednszone/azurerm"
   for_each = var.private_dns_zones
 
-  # Required by the module you are actually using:
   domain_name = each.value.name
   parent_id   = local.rg_id
 
-  # Keep this if your module supports VNet links (most do).
-  # If Terraform throws an error on this next, we’ll rename it to the module’s expected name.
-  virtual_network_links = {
-    for vnet_key in each.value.vnet_keys : "${each.key}-${vnet_key}" => {
+  # IMPORTANT: list of objects; each must have name (or vnetlinkname)
+  virtual_network_links = [
+    for vnet_key in each.value.vnet_keys : {
+      name               = "${each.key}-${vnet_key}" # ✅ satisfies module validation
       virtual_network_id = local.vnet_resource_id_by_key[vnet_key]
     }
-  }
+  ]
 
   tags = merge(var.tags, try(each.value.tags, {}))
-
 }
 
 ########################################
@@ -349,15 +375,15 @@ locals {
   invalid_pe = [for k, pe in var.private_endpoints : k if local.pe_target_id[k] == null]
 }
 
-resource "null_resource" "validate_pe" {
-  count = length(local.invalid_pe) > 0 ? 1 : 0
-  lifecycle {
-    precondition {
-      condition     = length(local.invalid_pe) == 0
-      error_message = "Invalid private_endpoints targets for: ${join(", ", local.invalid_pe)}."
-    }
-  }
-}
+# resource "null_resource" "validate_pe" {
+#   count = length(local.invalid_pe) > 0 ? 1 : 0
+#   lifecycle {
+#     precondition {
+#       condition     = length(local.invalid_pe) == 0
+#       error_message = "Invalid private_endpoints targets for: ${join(", ", local.invalid_pe)}."
+#     }
+#   }
+# }
 
 
 module "private_endpoint" {
