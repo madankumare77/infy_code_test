@@ -56,6 +56,17 @@ locals {
             address_prefix    = "101.122.96.0/27"
             service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
           }
+          cind-aiservice = {
+            enabled        = true
+            address_prefix = "101.122.96.48/28"
+            delegation = {
+              name = "functionapp"
+              service_delegation = {
+                name    = "Microsoft.Web/serverFarms"
+                actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+              }
+            }
+          }
         }
       }
     }
