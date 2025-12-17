@@ -1,12 +1,11 @@
 
-
 terraform {
   required_version = ">= 1.0"
 
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = ">= 3.116.0, < 4.0.0"
+      version = "~> 4.0"
     }
     azuread = {
       source  = "hashicorp/azuread"
@@ -28,6 +27,6 @@ provider "azurerm" {
 
 data "azurerm_client_config" "current" {}
 
-provider "azuread" {
-  tenant_id = data.azurerm_client_config.current.tenant_id
-}
+# provider "azuread" {
+#   tenant_id = data.azurerm_client_config.current.tenant_id
+# }
