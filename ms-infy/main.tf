@@ -389,6 +389,20 @@ locals {
 # }
 
 
+locals {
+  private_dns_zone_id_by_key = {
+    for k, m in module.private_dns_zone :
+    k => try(
+      m.private_dns_zone_id,
+      m.private_zone_id,
+      m.private_dns_zone_resource_id,
+      m.resource_id,
+      m.id
+    )
+  }
+}
+
+
 module "private_endpoint" {
   source   = "Azure/avm-res-network-privateendpoint/azurerm"
   for_each = var.private_endpoints
@@ -408,7 +422,7 @@ module "private_endpoint" {
   # DNS integration (typical AVM pattern uses zone resource IDs)
   # NOTE: your module expects a list of private DNS zone resource IDs (not a nested "group" block).
   private_dns_zone_resource_ids = [
-    module.private_dns_zone[each.value.private_dns_zone_key].private_dns_zone_id
+    local.private_dns_zone_id_by_key[each.value.private_dns_zone_key]
   ]
 
   tags = merge(var.tags, try(each.value.tags, {}))
