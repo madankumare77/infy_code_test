@@ -55,8 +55,8 @@ variable "virtual_networks" {
       tags                   = optional(map(string), {})
 
       subnet_configs = map(object({
-        enabled         = optional(bool, true)
-        address_prefix  = string
+        enabled           = optional(bool, true)
+        address_prefix    = string
         service_endpoints = optional(list(string), [])
 
         delegation = optional(object({
@@ -113,9 +113,9 @@ variable "nsg_configs" {
     security_rules = optional(list(object({
       name                       = string
       priority                   = number
-      direction                  = string   # Inbound/Outbound
-      access                     = string   # Allow/Deny
-      protocol                   = string   # Tcp/Udp/Icmp/*/Any
+      direction                  = string # Inbound/Outbound
+      access                     = string # Allow/Deny
+      protocol                   = string # Tcp/Udp/Icmp/*/Any
       source_address_prefix      = string
       destination_address_prefix = string
       source_port_range          = string
@@ -144,9 +144,9 @@ variable "nsg_associations" {
   description = "Map of association configs. Each entry attaches one NSG to one subnet."
   type = map(object({
     enabled    = optional(bool, true)
-    vnet_key   = string   # e.g. cind-claims
-    subnet_key = string   # e.g. cind-pvt
-    nsg_key    = string   # e.g. nsg_created or nsg_existing
+    vnet_key   = string # e.g. cind-claims
+    subnet_key = string # e.g. cind-pvt
+    nsg_key    = string # e.g. nsg_created or nsg_existing
   }))
   default = {}
 }

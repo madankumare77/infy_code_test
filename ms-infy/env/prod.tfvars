@@ -30,14 +30,14 @@ virtual_networks = {
 
       subnet_configs = {
         cind-pvt = {
-          enabled         = true
-          address_prefix  = "100.122.96.0/27"
+          enabled           = true
+          address_prefix    = "100.122.96.0/27"
           service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
         }
 
         cind-cosmosdb = {
-          enabled         = true
-          address_prefix  = "100.122.96.32/28"
+          enabled           = true
+          address_prefix    = "100.122.96.32/28"
           service_endpoints = ["Microsoft.AzureCosmosDB"]
         }
       }
@@ -48,10 +48,10 @@ virtual_networks = {
 # Import an existing NSG and attach to whichever subnet you want
 nsg_configs = {
   nsg_manual = {
-    enabled          = true
-    create_nsg       = false
-    nsg_name         = "nsg-infy-manual"
-    existing_rg_name = "rg-infy-prod"
+    enabled           = true
+    create_nsg        = false
+    nsg_name          = "nsg-infy-manual"
+    existing_rg_name  = "rg-infy-prod"
     existing_nsg_name = "nsg-infy-manual"
   }
 }

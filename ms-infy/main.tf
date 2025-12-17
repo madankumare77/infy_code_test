@@ -53,7 +53,7 @@ resource "terraform_data" "destroy_guard" {
 
 # AVM composition pattern: RG + VNet + NSG modules together 
 module "rg" {
-  count   = (var.enabled && var.resource_group.enabled && var.resource_group.create) ? 1 : 0
+  count = (var.enabled && var.resource_group.enabled && var.resource_group.create) ? 1 : 0
 
   # NOTE: Keep this as AVM source + pinned version.
   # If your registry name differs, only change source/version; do NOT change tfvars schema.
@@ -71,7 +71,7 @@ data "azurerm_resource_group" "rg" {
 }
 
 locals {
-  rg_name     = var.resource_group.create ? one(module.rg[*].name)     : one(data.azurerm_resource_group.rg[*].name)
+  rg_name     = var.resource_group.create ? one(module.rg[*].name) : one(data.azurerm_resource_group.rg[*].name)
   rg_location = var.resource_group.create ? one(module.rg[*].location) : one(data.azurerm_resource_group.rg[*].location)
 }
 
@@ -113,8 +113,8 @@ locals {
       !try(n.enabled, true)
       ? null
       : n.create_nsg
-        ? module.nsg[k].resource_id
-        : coalesce(try(n.existing_nsg_id, null), data.azurerm_network_security_group.existing[k].id)
+      ? module.nsg[k].resource_id
+      : coalesce(try(n.existing_nsg_id, null), data.azurerm_network_security_group.existing[k].id)
     )
   }
 }
@@ -139,7 +139,7 @@ module "vnet" {
   address_space = [each.value.address_space]
   dns_servers   = try(each.value.dns_servers, null)
 
-  enable_ddos_protection = each.value.enable_ddos_protection
+  #enable_ddos_protection = each.value.enable_ddos_protection
 
   tags = merge(var.resource_group.tags, try(each.value.tags, {}))
 
@@ -147,7 +147,7 @@ module "vnet" {
   subnets = {
     for sn_k, sn in each.value.subnet_configs :
     sn_k => {
-      address_prefixes = [sn.address_prefix]
+      address_prefixes  = [sn.address_prefix]
       service_endpoints = try(sn.service_endpoints, null)
       delegation        = try(sn.delegation, null)
 
@@ -170,6 +170,6 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
     if try(a.enabled, true)
   } : {}
 
-  subnet_id = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
+  subnet_id                 = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
   network_security_group_id = local.nsg_ids[each.value.nsg_key]
 }

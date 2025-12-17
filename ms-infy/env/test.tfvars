@@ -29,14 +29,14 @@ virtual_networks = {
 
       subnet_configs = {
         cind-pvt = {
-          enabled         = true
-          address_prefix  = "100.122.96.0/27"
+          enabled           = true
+          address_prefix    = "100.122.96.0/27"
           service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
         }
 
         cind-cosmosdb = {
-          enabled         = true
-          address_prefix  = "100.122.96.32/28"
+          enabled           = true
+          address_prefix    = "100.122.96.32/28"
           service_endpoints = ["Microsoft.AzureCosmosDB"]
         }
 
@@ -46,8 +46,8 @@ virtual_networks = {
         }
 
         cind-funtionsapp = {
-          enabled         = true
-          address_prefix  = "100.122.96.64/28"
+          enabled           = true
+          address_prefix    = "100.122.96.64/28"
           service_endpoints = ["Microsoft.Storage", "Microsoft.Web"]
           delegation = {
             name = "functionapp"
@@ -65,9 +65,9 @@ virtual_networks = {
 # FIX: keys must be unique. Use nsg_created and nsg_existing, not duplicate nsg1.
 nsg_configs = {
   nsg_created = {
-    enabled     = true
-    create_nsg  = true
-    nsg_name    = "nsg-infy-test"
+    enabled    = true
+    create_nsg = true
+    nsg_name   = "nsg-infy-test"
     #location    = "centralindia"
     #rg_name     = "madan-test"
     security_rules = [
