@@ -84,6 +84,26 @@ nsg_configs = {
       }
     ]
   }
+  nsg_existing = {
+    enabled    = true
+    create_nsg = false
+    nsg_name   = "infy-manual-nsg"
+    #location    = "centralindia"
+    #rg_name     = "madan-test"
+    security_rules = [
+      {
+        name                       = "Allow-InBound"
+        priority                   = 500
+        direction                  = "Inbound"
+        access                     = "Allow"
+        protocol                   = "Tcp"
+        source_address_prefix      = "*"
+        destination_address_prefix = "VirtualNetwork"
+        source_port_range          = "*"
+        destination_port_range     = "443"
+      }
+    ]
+  }
 }
 
 # Attach NSG to any subnets you want (flexible)
@@ -100,5 +120,11 @@ nsg_associations = {
     vnet_key   = "cind-claims"
     subnet_key = "cind-funtionsapp"
     nsg_key    = "nsg_created"
+  }
+  assoc_ = {
+    enabled    = true
+    vnet_key   = "cind-claims"
+    subnet_key = "cind-aiservice"
+    nsg_key    = "nsg_existing"
   }
 }
