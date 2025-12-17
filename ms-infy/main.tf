@@ -170,8 +170,12 @@ module "vnet" {
       # route_table can be provided either as { id = ... } or via route_table_id in tfvars
       route_table = try(sn.route_table, null) != null ? sn.route_table : (try(sn.route_table_id, null) != null ? { id = sn.route_table_id } : null)
 
-      nat_gateway                     = try(sn.nat_gateway, null)
-      network_security_group          = try(sn.network_security_group, null)
+      nat_gateway = try(sn.nat_gateway, null)
+      # Network security groups are managed by the separate
+      # `azurerm_subnet_network_security_group_association` resources below
+      # (driven from var.nsg_associations). Avoid setting the
+      # `networkSecurityGroup` property in the subnet body to prevent
+      # provider-side churn where the attribute flips between null and an id.
       service_endpoint_policies       = try(sn.service_endpoint_policies, null)
       default_outbound_access_enabled = try(sn.default_outbound_access_enabled, null)
       sharing_scope                   = try(sn.sharing_scope, null)
