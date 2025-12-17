@@ -16,7 +16,7 @@ terraform {
   }
 
   # This removes your backend warning in pipeline
-  # backend "azurerm" {}
+  backend "azurerm" {}
 }
 
 
