@@ -93,19 +93,26 @@ locals {
   vnets_existing  = { for k, v in var.virtual_networks : k => v if !v.create }
 }
 
+
 module "vnet_created" {
   source   = "Azure/avm-res-network-virtualnetwork/azurerm"
   for_each = local.vnets_to_create
 
-  name     = each.value.name
-  location = each.value.location
-  #resource_group_name = local.rg_name
-  address_space = each.value.address_space
-  dns_servers   = try(each.value.dns_servers, [])
-  parent_id     = local.rg_id
+  name      = each.value.name
+  parent_id = local.rg_id
+  location  = each.value.location
 
+  address_space = each.value.address_space
+
+  #MUST be object (per your module variables.tf)
+  dns_servers = {
+    dns_servers = try(each.value.dns_servers, [])
+  }
+
+  # each subnet element must include "name"
   subnets = {
     for sk, s in each.value.subnets : s.name => {
+      name              = s.name
       address_prefixes  = s.address_prefixes
       service_endpoints = try(s.service_endpoints, null)
       delegation        = try(s.delegation, null)
@@ -166,6 +173,8 @@ locals {
   nsgs_existing  = { for k, v in var.nsgs : k => v if !v.create }
 }
 
+
+
 module "nsg_created" {
   source   = "Azure/avm-res-network-networksecuritygroup/azurerm"
   for_each = local.nsgs_to_create
@@ -173,8 +182,13 @@ module "nsg_created" {
   name                = each.value.name
   location            = coalesce(try(each.value.location, null), local.rg_location)
   resource_group_name = coalesce(try(each.value.resource_group_name, null), local.rg_name)
-  security_rules      = each.value.security_rules
-  tags                = merge(var.tags, try(each.value.tags, {}))
+
+  # ✅ MUST be map(object)
+  security_rules = {
+    for r in each.value.security_rules : r.name => r
+  }
+
+  tags = merge(var.tags, try(each.value.tags, {}))
 }
 
 data "azurerm_network_security_group" "nsg_existing" {
