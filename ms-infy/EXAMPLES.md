@@ -11,4 +11,10 @@ Minimal flow to add more NSGs/VNets:
 2. Add another entry into `nsg_configs` with a unique key and `create_nsg = true` (or set existing reference fields for an imported NSG).
 3. Create an assoc entry in `nsg_associations` pointing the subnet to the NSG.
 
-See `env/example-multiple.tfvars` for a working sample that creates two VNets and two NSGs and attaches them to subnets.
+See `ms-infy/locals.tf` for a working sample of defaults that create two VNets and two NSGs and attach them to subnets.
+
+Note about environment defaults:
+
+- This repo uses `ms-infy/locals.tf` as the source of environment defaults for quick iteration and local testing. CI workflows run without `.tfvars` and rely on the module's locals by default.
+
+If you need to override specific values temporarily, use explicit `-var 'name=value'` on the CLI or set `TF_VAR_*` environment variables in CI.

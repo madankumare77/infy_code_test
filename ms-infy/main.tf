@@ -3,10 +3,14 @@
 # Guardrail: block unintended deletions
 ########################################
 
+// Note: effective_* locals are defined in `ms-infy/locals.tf` so they are
+// available to the rest of this module and can be overridden by `.tfvars`.
 locals {
-  # Flatten nested VNets map for stable for_each keys [2](https://microsoft.sharepoint.com/teams/Aznet/_layouts/15/Doc.aspx?sourcedoc=%7BD04AF3DA-9ED9-433A-A429-519F96D176B8%7D&file=SDN%20Bootcamp%20-%20Azure%20Virtual%20Network%20Manager.pptx&action=edit&mobileredirect=true&DefaultItemOpen=1)
+  # Flatten nested VNets map for stable for_each keys (prefer var.* when
+  # provided; otherwise use `env/locals.tf` defaults via
+  # `local.effective_virtual_networks`).
   vnet_flat = merge([
-    for outer_k, outer_v in var.virtual_networks : {
+    for outer_k, outer_v in local.effective_virtual_networks : {
       for vnet_k, vnet in outer_v :
       vnet_k => merge(vnet, { _outer_key = outer_k })
     }
@@ -20,8 +24,8 @@ locals {
     ]
   ]))
 
-  any_nsg_disabled   = anytrue([for k, n in var.nsg_configs : !try(n.enabled, true)])
-  any_assoc_disabled = anytrue([for k, a in var.nsg_associations : !try(a.enabled, true)])
+  any_nsg_disabled   = anytrue([for k, n in local.effective_nsg_configs : !try(n.enabled, true)])
+  any_assoc_disabled = anytrue([for k, a in local.effective_nsg_associations : !try(a.enabled, true)])
 
   any_delete_intent = (
     !var.enabled
@@ -53,7 +57,7 @@ resource "terraform_data" "destroy_guard" {
 
 # AVM composition pattern: RG + VNet + NSG modules together 
 module "rg" {
-  count = (var.enabled && var.resource_group.enabled && var.resource_group.create) ? 1 : 0
+  count = (var.enabled && var.create_resource_group && local.effective_resource_group.enabled && local.effective_resource_group.create) ? 1 : 0
 
   # NOTE: Keep this as AVM source + pinned version.
   # If your registry name differs, only change source/version; do NOT change tfvars schema.
@@ -61,19 +65,24 @@ module "rg" {
   # Bump to a version that supports azurerm >=3.71 and <5.0 so it can interoperate with other modules
   version = "0.2.1"
 
-  name     = var.resource_group.name
-  location = var.resource_group.location
-  tags     = var.resource_group.tags
+  name     = local.effective_resource_group.name
+  location = local.effective_resource_group.location
+  tags     = local.effective_resource_group.tags
 }
 
 data "azurerm_resource_group" "rg" {
-  count = (var.enabled && var.resource_group.enabled && !var.resource_group.create) ? 1 : 0
-  name  = var.resource_group.name
+  count = (var.enabled && var.create_resource_group && local.effective_resource_group.enabled && !local.effective_resource_group.create) ? 1 : 0
+  name  = local.effective_resource_group.name
 }
 
 locals {
-  rg_name     = var.resource_group.create ? one(module.rg[*].name) : one(data.azurerm_resource_group.rg[*].name)
-  rg_location = var.resource_group.create ? one(module.rg[*].location) : one(data.azurerm_resource_group.rg[*].location)
+  rg_name = var.create_resource_group ? (
+    local.effective_resource_group.create ? one(module.rg[*].name) : one(data.azurerm_resource_group.rg[*].name)
+  ) : local.effective_resource_group.name
+
+  rg_location = var.create_resource_group ? (
+    local.effective_resource_group.create ? one(module.rg[*].location) : one(data.azurerm_resource_group.rg[*].location)
+  ) : local.effective_resource_group.location
 }
 
 ########################################
@@ -81,10 +90,7 @@ locals {
 ########################################
 
 module "nsg" {
-  for_each = (var.enabled) ? {
-    for k, n in var.nsg_configs : k => n
-    if try(n.enabled, true) && n.create_nsg
-  } : {}
+  for_each = var.enabled && var.create_nsgs ? tomap({ for k, n in local.effective_nsg_configs : k => n if try(n.enabled, true) && n.create_nsg }) : tomap({})
 
   source  = "Azure/avm-res-network-networksecuritygroup/azurerm"
   version = "0.5.0"
@@ -92,7 +98,7 @@ module "nsg" {
   name                = each.value.nsg_name
   resource_group_name = local.rg_name
   location            = coalesce(try(each.value.location, null), local.rg_location)
-  tags                = merge(var.resource_group.tags, try(each.value.tags, {}))
+  tags                = merge(local.effective_resource_group.tags, try(each.value.tags, {}))
 
   # Module expects a map(object) keyed by rule name. Convert list -> map when provided.
   security_rules = length(try(each.value.security_rules, [])) > 0 ? { for r in each.value.security_rules : r.name => r } : {}
@@ -100,10 +106,7 @@ module "nsg" {
 }
 
 data "azurerm_network_security_group" "existing" {
-  for_each = (var.enabled) ? {
-    for k, n in var.nsg_configs : k => n
-    if try(n.enabled, true) && !n.create_nsg
-  } : {}
+  for_each = var.enabled && var.create_nsgs ? tomap({ for k, n in local.effective_nsg_configs : k => n if try(n.enabled, true) && !n.create_nsg }) : tomap({})
 
   name                = coalesce(try(each.value.existing_nsg_name, null), each.value.nsg_name)
   resource_group_name = coalesce(try(each.value.existing_rg_name, null), local.rg_name)
@@ -111,13 +114,15 @@ data "azurerm_network_security_group" "existing" {
 
 locals {
   nsg_ids = {
-    for k, n in var.nsg_configs :
+    for k, n in local.effective_nsg_configs :
     k => (
-      !try(n.enabled, true)
-      ? null
-      : n.create_nsg
-      ? module.nsg[k].resource_id
-      : coalesce(try(n.existing_nsg_id, null), data.azurerm_network_security_group.existing[k].id)
+      # disabled entries map to null
+      !try(n.enabled, true) ? null : (
+        # if NSG management is disabled, prefer any provided existing id, otherwise null
+        !var.create_nsgs ? coalesce(try(n.existing_nsg_id, null), null) : (
+          n.create_nsg ? module.nsg[k].resource_id : coalesce(try(n.existing_nsg_id, null), data.azurerm_network_security_group.existing[k].id)
+        )
+      )
     )
   }
 }
@@ -127,10 +132,7 @@ locals {
 ########################################
 
 module "vnet" {
-  for_each = (var.enabled) ? {
-    for k, v in local.vnet_flat : k => v
-    if try(v.enabled, true)
-  } : {}
+  for_each = var.enabled && var.create_vnets ? tomap({ for k, v in local.vnet_flat : k => v if try(v.enabled, true) }) : tomap({})
 
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "0.8.0"
@@ -146,7 +148,7 @@ module "vnet" {
 
   #enable_ddos_protection = each.value.enable_ddos_protection
 
-  tags = merge(var.resource_group.tags, try(each.value.tags, {}))
+  tags = merge(local.effective_resource_group.tags, try(each.value.tags, {}))
 
   # Only enabled subnets are created.
   # Module expects a map(object). We preserve the original keys as the map keys and
@@ -187,14 +189,13 @@ module "vnet" {
 }
 
 ########################################
-# Subnet <-> NSG associations: fully tfvars-driven
+# Subnet <-> NSG associations: default-driven from `env/locals.tf` but
+# overridable via tfvars; associations come from
+# `local.effective_nsg_associations` (prefer `var.nsg_associations` when set).
 ########################################
 
 resource "azurerm_subnet_network_security_group_association" "assoc" {
-  for_each = (var.enabled) ? {
-    for k, a in var.nsg_associations : k => a
-    if try(a.enabled, true)
-  } : {}
+  for_each = var.enabled && var.create_associations ? tomap({ for k, a in local.effective_nsg_associations : k => a if try(a.enabled, true) }) : tomap({})
 
   subnet_id                 = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
   network_security_group_id = local.nsg_ids[each.value.nsg_key]

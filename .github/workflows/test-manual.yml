@@ -27,7 +27,6 @@ jobs:
     environment: test
     env:
       TF_WORKDIR: ms-infy
-      TFVARS_FILE: env/test.tfvars
 
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +34,6 @@ jobs:
       - name: Verify TF_WORKDIR exists
         run: |
           test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
-          test -f "${{ env.TF_WORKDIR }}/${{ env.TFVARS_FILE }}" || { echo "ERROR: tfvars file not found: ${{ env.TF_WORKDIR }}/${{ env.TFVARS_FILE }}"; exit 1; }
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -70,9 +68,7 @@ jobs:
       - name: Terraform plan (test)
         working-directory: ${{ env.TF_WORKDIR }}
         run: |
-          terraform plan -input=false \
-            -var-file="${{ env.TFVARS_FILE }}" \
-            -out=tfplan.bin
+          terraform plan -input=false -out=tfplan.bin
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
@@ -87,7 +83,6 @@ jobs:
     environment: test
     env:
       TF_WORKDIR: ms-infy
-      TFVARS_FILE: env/test.tfvars
 
     steps:
       - uses: actions/checkout@v4
