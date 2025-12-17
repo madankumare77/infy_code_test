@@ -94,7 +94,9 @@ module "nsg" {
   location            = coalesce(try(each.value.location, null), local.rg_location)
   tags                = merge(var.resource_group.tags, try(each.value.tags, {}))
 
-  security_rules = try(each.value.security_rules, [])
+  # Module expects a map(object) keyed by rule name. Convert list -> map when provided.
+  security_rules = length(try(each.value.security_rules, [])) > 0 ? { for r in each.value.security_rules : r.name => r } : {}
+
 }
 
 data "azurerm_network_security_group" "existing" {
@@ -150,8 +152,33 @@ module "vnet" {
   # Module expects a map(object). We preserve the original keys as the map keys and
   # ensure each subnet object contains a `name` attribute (required by the module).
   subnets = {
-    for sn_k, sn in each.value.subnet_configs : sn_k => merge(sn, { name = sn_k })
-    if try(sn.enabled, true)
+    for sn_k, sn in each.value.subnet_configs : sn_k => {
+      name = sn_k
+
+      # address: support single address_prefix or pre-populated address_prefixes
+      address_prefixes = sn.address_prefix != null ? [sn.address_prefix] : try(sn.address_prefixes, null)
+
+      # service_endpoints: module expects a set(string)
+      service_endpoints = try(sn.service_endpoints, null) != null ? toset(sn.service_endpoints) : null
+
+      # delegation: module expects a list(object) when present
+      delegation = try(sn.delegation, null) != null ? [sn.delegation] : null
+
+      private_endpoint_network_policies = try(sn.private_endpoint_network_policies, null)
+      private_link_service_network_policies_enabled = try(sn.private_link_service_network_policies_enabled, true)
+
+      # route_table can be provided either as { id = ... } or via route_table_id in tfvars
+      route_table = try(sn.route_table, null) != null ? sn.route_table : (try(sn.route_table_id, null) != null ? { id = sn.route_table_id } : null)
+
+      nat_gateway = try(sn.nat_gateway, null)
+      network_security_group = try(sn.network_security_group, null)
+      service_endpoint_policies = try(sn.service_endpoint_policies, null)
+      default_outbound_access_enabled = try(sn.default_outbound_access_enabled, null)
+      sharing_scope = try(sn.sharing_scope, null)
+
+      timeouts = try(sn.timeouts, null)
+      role_assignments = try(sn.role_assignments, null)
+    } if try(sn.enabled, true)
   }
 }
 
