@@ -5,7 +5,7 @@ terraform {
 
   required_providers {
     azurerm = {
-      source  = "hashicorp/azurerm"
+      source = "hashicorp/azurerm"
       # Allow both compatible 3.x and 4.x releases so module constraints can resolve
       version = ">= 3.116.0, < 5.0.0"
     }
