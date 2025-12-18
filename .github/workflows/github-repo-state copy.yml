@@ -1,0 +1,191 @@
+
+name: Github-repo-state-copy
+
+on:
+  workflow_dispatch:
+
+  # push:
+  #   paths-ignore:
+  #     - "**.tfstate"
+  #     - "**.tfstate.encrypted"
+
+permissions:
+  contents: write         # action will commit/push encrypted state
+  id-token: write         # required for Azure OIDC login
+  actions: read
+  deployments: write
+
+concurrency:
+  group: terraform-test-state
+  cancel-in-progress: false
+
+env:
+  TF_VAR_subscription_id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_tenant_id:       ${{ secrets.AZURE_TENANT_ID }}
+
+  ARM_USE_OIDC: true
+  ARM_CLIENT_ID:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+  ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+
+jobs:
+  # repository_file:
+  #   runs-on: ubuntu-latest
+  #   name: Repository File
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ secrets.gh_access_token }}
+  plan-test:
+    runs-on: ubuntu-latest
+    environment: test
+    env:
+      TF_WORKDIR: "."
+      #ROOT_STATE: terraform.tfstate   #repo root state file
+
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout repository
+        with:
+          token: ${{ secrets.gh_access_token }}
+
+      # - name: Verify TF_WORKDIR exists
+      #   run: |
+      #     test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
+
+      #Decrypt/download state into repo (repo root expected)
+      # - name: Decrypt Repository File
+      #   uses: actions/checkout@v4
+      #   with:
+      #     encryption_key: ${{ secrets.encryption_key }}
+      #     operation: download
+      #     location: repository
+      #   continue-on-error: true
+
+      # - name: Download Artifact
+      #   uses: badgerhobbs/terraform-state@v2     #actions/checkout@v4
+      #   with:
+      #     operation: download
+      #     location: artifact
+      #     github_token: ${{ secrets.gh_access_token }}
+      #  continue-on-error: true
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform fmt (check)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (LOCAL backend)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform init -input=false -backend=false
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform validate
+
+      - name: Terraform plan (test)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform plan -input=false #-out=tfplan.bin
+
+      # - name: Upload plan artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: tfplan-test
+      #     path: ${{ env.TF_WORKDIR }}/tfplan.bin
+
+
+  # apply-test:
+  #   runs-on: ubuntu-latest
+  #   needs: [ plan-test ]
+  #   environment: test
+  #   env:
+  #     TF_WORKDIR: ms-infy
+  #     ROOT_STATE: terraform.tfstate   #repo root state file
+
+    # steps:
+    #   - uses: actions/checkout@v4
+    #     name: Checkout repository
+    #     with:
+    #       token: ${{ secrets.gh_access_token }}
+
+      #Decrypt/download state into repo (repo root expected)
+      # - name: Decrypt Repository File
+      #   uses: actions/checkout@v4
+      #   with:
+      #     encryption_key: ${{ secrets.encryption_key }}
+      #     operation: download
+      #     location: repository
+      #   continue-on-error: true
+
+      # - name: Download Artifact
+      #   uses: badgerhobbs/terraform-state@v2         #actions/checkout@v4
+      #   with:
+      #     operation: download
+      #     location: artifact
+      #     github_token: ${{ secrets.gh_access_token }}
+      #   continue-on-error: true
+
+      # - name: Azure login (OIDC)
+      #   uses: azure/login@v2
+      #   with:
+      #     client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+      #     tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+
+      # - name: Setup Terraform
+      #   uses: hashicorp/setup-terraform@v3
+      #   with:
+      #     terraform_wrapper: false
+
+
+      # - name: Terraform init (LOCAL backend)
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: terraform init -input=false -backend=false
+
+      # - name: Download plan artifact
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: tfplan-test
+      #     path: ${{ env.TF_WORKDIR }}
+
+      # - name: Verify plan exists
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: |
+      #     ls -la
+      #     test -f tfplan.bin || { echo "::error::tfplan.bin missing"; exit 1; }
+
+      - name: Terraform apply (test)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform apply -auto-approve -input=false #tfplan.bin
+
+      # #Encrypt + commit/push state in repo root
+      # - name: Encrypt and Commit Repository File
+      #   uses: actions/checkout@v4
+      #   with:
+      #     encryption_key: ${{ secrets.encryption_key }}
+      #     operation: upload
+
+      # - name: Upload Artifact
+      #   uses: badgerhobbs/terraform-state@v2           #actions/checkout@v4
+      #   with:
+      #     operation: upload
+      #     location: artifact
+      #     github_token: ${{ secrets.gh_access_token }}
+
+      - name: Commit Repository File
+        uses: madankumare77/infy_code_test@v3          #badgerhobbs/terraform-state@v2
+        with:
+          operation: upload
+          location: repository
