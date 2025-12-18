@@ -277,10 +277,10 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
 #   }
 # }
 
-# module "privatednszone" {
-#   source           = "Azure/avm-res-network-privatednszone/azurerm"
-#   version          = "0.4.3"
-#   parent_id        = local.rg_id
-#   domain_name      = "privatelink.vaultcore.azure.net"
-#   enable_telemetry = false
-# }
+module "privatednszone" {
+  source           = "Azure/avm-res-network-privatednszone/azurerm"
+  version          = "0.4.3"
+  parent_id        = local.rg_id
+  domain_name      = "privatelink.vaultcore.azure.net"
+  enable_telemetry = false
+}
