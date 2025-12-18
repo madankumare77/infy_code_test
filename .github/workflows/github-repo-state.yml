@@ -24,6 +24,14 @@ env:
   ARM_SUBSCRIPTION_ID: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
 
 jobs:
+  # repository_file:
+  #   runs-on: ubuntu-latest
+  #   name: Repository File
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         token: ${{ secrets.gh_access_token }}
   plan-test:
     runs-on: ubuntu-latest
     environment: test
@@ -33,10 +41,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        name: Checkout repository
+        with:
+          token: ${{ secrets.gh_access_token }}
 
-      - name: Verify TF_WORKDIR exists
-        run: |
-          test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
+      # - name: Verify TF_WORKDIR exists
+      #   run: |
+      #     test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
 
       #Decrypt/download state into repo (repo root expected)
       # - name: Decrypt Repository File
@@ -47,13 +58,13 @@ jobs:
       #     location: repository
       #   continue-on-error: true
 
-      - name: Download Artifact
-        uses: badgerhobbs/terraform-state@v2     #actions/checkout@v4
-        with:
-          operation: download
-          location: artifact
-          github_token: ${{ secrets.gh_access_token }}
-        continue-on-error: true
+      # - name: Download Artifact
+      #   uses: badgerhobbs/terraform-state@v2     #actions/checkout@v4
+      #   with:
+      #     operation: download
+      #     location: artifact
+      #     github_token: ${{ secrets.gh_access_token }}
+      #  continue-on-error: true
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -100,6 +111,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        name: Checkout repository
+        with:
+          token: ${{ secrets.gh_access_token }}
 
       #Decrypt/download state into repo (repo root expected)
       # - name: Decrypt Repository File
@@ -110,13 +124,13 @@ jobs:
       #     location: repository
       #   continue-on-error: true
 
-      - name: Download Artifact
-        uses: badgerhobbs/terraform-state@v2         #actions/checkout@v4
-        with:
-          operation: download
-          location: artifact
-          github_token: ${{ secrets.gh_access_token }}
-        continue-on-error: true
+      # - name: Download Artifact
+      #   uses: badgerhobbs/terraform-state@v2         #actions/checkout@v4
+      #   with:
+      #     operation: download
+      #     location: artifact
+      #     github_token: ${{ secrets.gh_access_token }}
+      #   continue-on-error: true
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -158,9 +172,15 @@ jobs:
       #     encryption_key: ${{ secrets.encryption_key }}
       #     operation: upload
 
-      - name: Upload Artifact
-        uses: badgerhobbs/terraform-state@v2           #actions/checkout@v4
+      # - name: Upload Artifact
+      #   uses: badgerhobbs/terraform-state@v2           #actions/checkout@v4
+      #   with:
+      #     operation: upload
+      #     location: artifact
+      #     github_token: ${{ secrets.gh_access_token }}
+
+      - name: Commit Repository File
+        uses: madankumare77/terraform-state@v2                #badgerhobbs/terraform-state@v2
         with:
           operation: upload
-          location: artifact
-          github_token: ${{ secrets.gh_access_token }}
+          location: repository
