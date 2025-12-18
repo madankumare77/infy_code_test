@@ -211,76 +211,76 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
   network_security_group_id = local.nsg_ids[each.value.nsg_key]
 }
 
-module "keyvault" {
-  source  = "Azure/avm-res-keyvault-vault/azurerm"
-  version = "0.10.2"
-  # insert the 4 required variables here
-  name                            = "kv002-test-infy"
-  location                        = local.rg_location
-  resource_group_name             = local.rg_name
-  tenant_id                       = var.tenant_id
-  soft_delete_retention_days      = 7
-  purge_protection_enabled        = true
-  legacy_access_policies_enabled  = false #true will enable access policy. false will enable rbac
-  enabled_for_deployment          = true
-  enabled_for_disk_encryption     = true
-  enabled_for_template_deployment = true
-  public_network_access_enabled   = false
-  enable_telemetry                = false
-  network_acls = {
-    bypass         = "AzureServices"
-    default_action = "Deny"
-    # Resolve the module.vnet key robustly: prefer an explicit `name` attribute
-    # when present in the original vnet map, else fall back to the original map key.
-    virtual_network_subnet_ids = [
-      module.vnet[lookup(local.vnet_name_to_key, "vnet1", "vnet1")].subnets["cind-pvt"].resource_id
-    ]
-  }
-  private_endpoints = {
-    "kv-pe" = {
-      name                            = "pvt-endpoint-kv002-test-infy" # optional
-      subnet_resource_id              = module.vnet[lookup(local.vnet_name_to_key, "vnet1", "vnet1")].subnets["cind-pvt"].resource_id
-      private_service_connection_name = "kv001-test-infy-psc" # optional
-      #private_dns_zone_resource_ids = [azurerm_private_dns_zone.kv_dns.id]            # optional set(string)
-      tags = { env = "test" } # optional
-    }
-  }
-  # Enable diagnostic settings for Key Vault. Replace the placeholder
-  # workspace_resource_id with your Log Analytics workspace resource id
-  # or provide an event hub / storage account id instead.
-  diagnostic_settings = {
-    "kv-diag" = {
-      name                  = "diag-kv002-test-infy"
-      workspace_resource_id = module.law.resource_id
-      # Optional: lists of log and metric categories to enable
-      log_categories    = ["AuditEvent"]
-      log_groups        = []
-      metric_categories = ["AllMetrics"]
-    }
-  }
-  tags = {
-    created_by = "terraform"
-  }
-}
+# module "keyvault" {
+#   source  = "Azure/avm-res-keyvault-vault/azurerm"
+#   version = "0.10.2"
+#   # insert the 4 required variables here
+#   name                            = "kv002-test-infy"
+#   location                        = local.rg_location
+#   resource_group_name             = local.rg_name
+#   tenant_id                       = var.tenant_id
+#   soft_delete_retention_days      = 7
+#   purge_protection_enabled        = true
+#   legacy_access_policies_enabled  = false #true will enable access policy. false will enable rbac
+#   enabled_for_deployment          = true
+#   enabled_for_disk_encryption     = true
+#   enabled_for_template_deployment = true
+#   public_network_access_enabled   = false
+#   enable_telemetry                = false
+#   network_acls = {
+#     bypass         = "AzureServices"
+#     default_action = "Deny"
+#     # Resolve the module.vnet key robustly: prefer an explicit `name` attribute
+#     # when present in the original vnet map, else fall back to the original map key.
+#     virtual_network_subnet_ids = [
+#       module.vnet[lookup(local.vnet_name_to_key, "vnet1", "vnet1")].subnets["cind-pvt"].resource_id
+#     ]
+#   }
+#   private_endpoints = {
+#     "kv-pe" = {
+#       name                            = "pvt-endpoint-kv002-test-infy" # optional
+#       subnet_resource_id              = module.vnet[lookup(local.vnet_name_to_key, "vnet1", "vnet1")].subnets["cind-pvt"].resource_id
+#       private_service_connection_name = "kv001-test-infy-psc" # optional
+#       #private_dns_zone_resource_ids = [azurerm_private_dns_zone.kv_dns.id]            # optional set(string)
+#       tags = { env = "test" } # optional
+#     }
+#   }
+#   # Enable diagnostic settings for Key Vault. Replace the placeholder
+#   # workspace_resource_id with your Log Analytics workspace resource id
+#   # or provide an event hub / storage account id instead.
+#   diagnostic_settings = {
+#     "kv-diag" = {
+#       name                  = "diag-kv002-test-infy"
+#       workspace_resource_id = module.law.resource_id
+#       # Optional: lists of log and metric categories to enable
+#       log_categories    = ["AuditEvent"]
+#       log_groups        = []
+#       metric_categories = ["AllMetrics"]
+#     }
+#   }
+#   tags = {
+#     created_by = "terraform"
+#   }
+# }
 
-module "law" {
-  source                                    = "Azure/avm-res-operationalinsights-workspace/azurerm"
-  version                                   = "0.4.2"
-  name                                      = "IL-log-cind-test"
-  location                                  = local.rg_location
-  resource_group_name                       = local.rg_name
-  log_analytics_workspace_sku               = "PerGB2018"
-  log_analytics_workspace_retention_in_days = 30
-  enable_telemetry                          = false
-  tags = {
-    created_by = "terraform"
-  }
-}
+# module "law" {
+#   source                                    = "Azure/avm-res-operationalinsights-workspace/azurerm"
+#   version                                   = "0.4.2"
+#   name                                      = "IL-log-cind-test"
+#   location                                  = local.rg_location
+#   resource_group_name                       = local.rg_name
+#   log_analytics_workspace_sku               = "PerGB2018"
+#   log_analytics_workspace_retention_in_days = 30
+#   enable_telemetry                          = false
+#   tags = {
+#     created_by = "terraform"
+#   }
+# }
 
-module "privatednszone" {
-  source           = "Azure/avm-res-network-privatednszone/azurerm"
-  version          = "0.4.3"
-  parent_id        = local.rg_id
-  domain_name      = "privatelink.vaultcore.azure.net"
-  enable_telemetry = false
-}
+# module "privatednszone" {
+#   source           = "Azure/avm-res-network-privatednszone/azurerm"
+#   version          = "0.4.3"
+#   parent_id        = local.rg_id
+#   domain_name      = "privatelink.vaultcore.azure.net"
+#   enable_telemetry = false
+# }
