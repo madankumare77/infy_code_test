@@ -5,12 +5,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write         # required to commit state back
-  id-token: write
+  contents: write         # action will commit/push encrypted state
+  id-token: write         # required for Azure OIDC login
   actions: read
   deployments: write
 
-# Prevent concurrent runs corrupting state (acts like "poor man's locking")
 concurrency:
   group: terraform-test-state
   cancel-in-progress: false
@@ -30,7 +29,7 @@ jobs:
     environment: test
     env:
       TF_WORKDIR: ms-infy
-      STATE_PATH: tfstate/test/terraform.tfstate
+      ROOT_STATE: terraform.tfstate   #repo root state file
 
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +37,15 @@ jobs:
       - name: Verify TF_WORKDIR exists
         run: |
           test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
-        
+
+      #Decrypt/download state into repo (repo root expected)
+      - name: Decrypt Repository File
+        uses: badgerhobbs/terraform-state@v2
+        with:
+          encryption_key: ${{ secrets.encryption_key }}
+          operation: download
+          location: repository
+        continue-on-error: true
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -55,17 +62,6 @@ jobs:
       - name: Terraform fmt (check)
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform fmt -check -recursive
-
-      # Pull state from repo into the TF working directory (if it exists)
-      - name: Restore state from repo
-        run: |
-          mkdir -p "${{ env.TF_WORKDIR }}"
-          if [ -f "${{ env.STATE_PATH }}" ]; then
-            cp "${{ env.STATE_PATH }}" "${{ env.TF_WORKDIR }}/terraform.tfstate"
-            echo "Restored existing terraform.tfstate from repo."
-          else
-            echo "No prior state found in repo. A new state will be created on first apply."
-          fi
 
       - name: Terraform init (LOCAL backend)
         working-directory: ${{ env.TF_WORKDIR }}
@@ -92,10 +88,19 @@ jobs:
     environment: test
     env:
       TF_WORKDIR: ms-infy
-      STATE_PATH: tfstate/test/terraform.tfstate
+      ROOT_STATE: terraform.tfstate   #repo root state file
 
     steps:
       - uses: actions/checkout@v4
+
+      #Decrypt/download state into repo (repo root expected)
+      - name: Decrypt Repository File
+        uses: badgerhobbs/terraform-state@v2
+        with:
+          encryption_key: ${{ secrets.encryption_key }}
+          operation: download
+          location: repository
+        continue-on-error: true
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -104,20 +109,11 @@ jobs:
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
 
-      # Restore state again in apply job (fresh runner)
-      - name: Restore state from repo
-        run: |
-          if [ -f "${{ env.STATE_PATH }}" ]; then
-            mkdir -p "${{ env.TF_WORKDIR }}"
-            cp "${{ env.STATE_PATH }}" "${{ env.TF_WORKDIR }}/terraform.tfstate"
-            echo "Restored existing terraform.tfstate from repo."
-          else
-            echo "No prior state found in repo."
-          fi
 
       - name: Terraform init (LOCAL backend)
         working-directory: ${{ env.TF_WORKDIR }}
@@ -131,32 +127,17 @@ jobs:
 
       - name: Verify plan exists
         working-directory: ${{ env.TF_WORKDIR }}
-        run: ls -la && test -f tfplan.bin || { echo "::error::tfplan.bin missing"; exit 1; }
+        run: |
+          ls -la
+          test -f tfplan.bin || { echo "::error::tfplan.bin missing"; exit 1; }
 
       - name: Terraform apply (test)
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform apply -auto-approve -input=false tfplan.bin
 
-      # Save updated state back to repo
-      - name: Persist state back to repo
-        if: ${{ success() }}
-        run: |
-          mkdir -p "$(dirname "${{ env.STATE_PATH }}")"
-          if [ -f "${{ env.TF_WORKDIR }}/terraform.tfstate" ]; then
-            cp "${{ env.TF_WORKDIR }}/terraform.tfstate" "${{ env.STATE_PATH }}"
-            echo "State copied to ${STATE_PATH}"
-          else
-            echo "::error::terraform.tfstate not found after apply"; exit 1;
-          fi
-
-      - name: Commit state update
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${{ env.STATE_PATH }}"
-          if git diff --cached --quiet; then
-            echo "No state changes to commit."
-            exit 0
-          fi
-          git commit -m "chore(tfstate): update test state [skip ci]"
-          git push
+      #Encrypt + commit/push state in repo root
+      - name: Encrypt and Commit Repository File
+        uses: badgerhobbs/terraform-state@v2
+        with:
+          encryption_key: ${{ secrets.encryption_key }}
+          operation: upload
