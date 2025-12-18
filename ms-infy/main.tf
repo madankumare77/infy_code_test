@@ -192,3 +192,21 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
   subnet_id                 = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
   network_security_group_id = local.nsg_ids[each.value.nsg_key]
 }
+
+module "keyvault" {
+  source  = "Azure/avm-res-keyvault-vault/azurerm"
+  version = "0.10.2"
+  # insert the 4 required variables here
+  name = "kv001-test-infy"
+  location = local.rg_location
+  resource_group_name = local.rg_name
+  tenant_id = var.tenant_id
+  soft_delete_retention_days = 7
+  purge_protection_enabled = true
+  legacy_access_policies_enabled = false    #rbac
+  enabled_for_deployment          = true
+  enabled_for_disk_encryption     = true
+  enabled_for_template_deployment = true
+  public_network_access_enabled   = false
+  tags                            = "terraform"
+}
