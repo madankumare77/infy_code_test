@@ -180,7 +180,7 @@ jobs:
       #     github_token: ${{ secrets.gh_access_token }}
 
       - name: Commit Repository File
-        uses: madankumare77/infy_code_test               #badgerhobbs/terraform-state@v2
+        uses: madankumare77/infy_code_test@v1               #badgerhobbs/terraform-state@v2
         with:
           operation: upload
           location: repository
