@@ -42,7 +42,7 @@ jobs:
     environment: test
     env:
       TF_WORKDIR: "."
-      ROOT_STATE: terraform.tfstate   #repo root state file
+      #ROOT_STATE: terraform.tfstate   #repo root state file
 
     steps:
       - uses: actions/checkout@v4
@@ -185,7 +185,7 @@ jobs:
       #     github_token: ${{ secrets.gh_access_token }}
 
       - name: Commit Repository File
-        uses: madankumare77/infy_code_test@v1           #badgerhobbs/terraform-state@v2
+        uses: madankumare77/infy_code_test@v5          #badgerhobbs/terraform-state@v2
         with:
           operation: upload
           location: repository

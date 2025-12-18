@@ -100,7 +100,7 @@ runs:
       if: "${{ inputs.location == 'repository' && inputs.operation == 'upload' && inputs.encryption_key == '' }}"
       shell: bash
       run: |
-        git add terraform.tfstate
+        git add ${{ inputs.directory }}/terraform.tfstate
         git commit -m " Automatically Updated Terraform State."
         git push
 
