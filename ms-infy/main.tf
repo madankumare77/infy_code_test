@@ -9,12 +9,25 @@ locals {
   # Flatten nested VNets map for stable for_each keys (prefer var.* when
   # provided; otherwise use `env/locals.tf` defaults via
   # `local.effective_virtual_networks`).
-  vnet_flat = merge([
-    for outer_k, outer_v in local.effective_virtual_networks : {
-      for vnet_k, vnet in outer_v :
-      vnet_k => merge(vnet, { _outer_key = outer_k })
-    }
-  ]...)
+  # NOTE: Use the virtual_networks map's original keys as the module
+  # iteration keys (this keeps `module.vnet` entries keyed by the
+  # `locals.virtual_networks` keys such as `vnet1`, which is useful when
+  # downstream maps (like `nsg_associations`) reference VNets by that
+  # original key). We still capture the explicit `name` (if present) on
+  # each entry so callers can refer to the human-friendly name when
+  # desired.
+  vnet_flat = {
+    for vnet_k, vnet in local.effective_virtual_networks :
+    vnet_k => merge(vnet, { _vnet_key = vnet_k, _vnet_name = try(vnet.name, null) })
+  }
+
+  # Helper map: allow callers to provide either the original map key
+  # (e.g. "vnet1") or the explicit `name` (e.g. "cind-claims"). This
+  # maps the canonical lookup key -> original map key so our module
+  # lookup expressions can resolve either form.
+  vnet_name_to_key = {
+    for k, v in local.vnet_flat : coalesce(try(v._vnet_name, null), k) => k
+  }
 
   any_vnet_disabled = anytrue([for k, v in local.vnet_flat : !try(v.create, true)])
 
@@ -33,7 +46,7 @@ locals {
   # body matches the association resource (prevents provider-side flips).
   subnet_nsg_map = {
     for k, a in local.effective_nsg_associations :
-    "${a.vnet_key}.${a.subnet_key}" => try(local.nsg_ids[a.nsg_key], null)
+    "${lookup(local.vnet_name_to_key, a.vnet_key, a.vnet_key)}.${a.subnet_key}" => try(local.nsg_ids[a.nsg_key], null)
   }
 }
 
@@ -69,6 +82,8 @@ locals {
   rg_location = local.effective_resource_group.create ? (
     local.effective_resource_group.create ? one(module.rg[*].location) : one(data.azurerm_resource_group.rg[*].location)
   ) : local.effective_resource_group.location
+
+  rg_id = local.effective_resource_group.create ? one(module.rg[*].resource_id) : one(data.azurerm_resource_group.rg[*].id)
 }
 
 ########################################
@@ -119,7 +134,10 @@ module "vnet" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
   version = "0.8.0"
 
-  name                = each.key
+  # The AVM module expects the VNet resource name. Prefer the explicit
+  # `name` attribute from the map; fall back to the for_each key to preserve
+  # backward compatibility.
+  name                = try(each.value.name, each.key)
   resource_group_name = local.rg_name
   location            = each.value.location
 
@@ -129,8 +147,8 @@ module "vnet" {
   dns_servers = try(each.value.dns_servers, null) != null ? { dns_servers = toset(each.value.dns_servers) } : null
 
   #enable_ddos_protection = each.value.enable_ddos_protection
-
-  tags = merge(local.effective_resource_group.tags, try(each.value.tags, {}))
+  enable_telemetry = false
+  tags             = merge(local.effective_resource_group.tags, try(each.value.tags, {}))
 
   # Subnets are created when they exist in the `subnet_configs` map. Removing
   # or commenting out a subnet entry in `ms-infy/locals.tf` will remove
@@ -189,7 +207,7 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
   # cause Terraform to plan the association's destruction on the next apply.
   for_each = { for k, a in local.effective_nsg_associations : k => a }
 
-  subnet_id                 = module.vnet[each.value.vnet_key].subnets[each.value.subnet_key].resource_id
+  subnet_id                 = module.vnet[lookup(local.vnet_name_to_key, each.value.vnet_key, each.value.vnet_key)].subnets[each.value.subnet_key].resource_id
   network_security_group_id = local.nsg_ids[each.value.nsg_key]
 }
 
@@ -203,12 +221,66 @@ module "keyvault" {
   tenant_id                       = var.tenant_id
   soft_delete_retention_days      = 7
   purge_protection_enabled        = true
-  legacy_access_policies_enabled  = false #rbac
+  legacy_access_policies_enabled  = false #true will enable access policy. false will enable rbac
   enabled_for_deployment          = true
   enabled_for_disk_encryption     = true
   enabled_for_template_deployment = true
   public_network_access_enabled   = false
+  enable_telemetry                = false
+  network_acls = {
+    bypass         = "AzureServices"
+    default_action = "Deny"
+    # Resolve the module.vnet key robustly: prefer an explicit `name` attribute
+    # when present in the original vnet map, else fall back to the original map key.
+    virtual_network_subnet_ids = [
+      module.vnet[lookup(local.vnet_name_to_key, "vnet1", "vnet1")].subnets["cind-pvt"].resource_id
+    ]
+  }
+  private_endpoints = {
+    "kv-pe" = {
+      name                            = "pvt-endpoint-kv001-test-infy" # optional
+      subnet_resource_id              = module.vnet[lookup(local.vnet_name_to_key, "vnet1", "vnet1")].subnets["cind-pvt"].resource_id
+      private_service_connection_name = "kv001-test-infy-psc" # optional
+      #private_dns_zone_resource_ids = [azurerm_private_dns_zone.kv_dns.id]            # optional set(string)
+      tags = { env = "test" } # optional
+    }
+  }
+  # Enable diagnostic settings for Key Vault. Replace the placeholder
+  # workspace_resource_id with your Log Analytics workspace resource id
+  # or provide an event hub / storage account id instead.
+  diagnostic_settings = {
+    "kv-diag" = {
+      name                  = "diag-kv001-test-infy"
+      workspace_resource_id = module.law.resource_id
+      # Optional: lists of log and metric categories to enable
+      log_categories    = ["AuditEvent"]
+      log_groups        = []
+      metric_categories = ["AllMetrics"]
+    }
+  }
   tags = {
     created_by = "terraform"
   }
+}
+
+module "law" {
+  source                                    = "Azure/avm-res-operationalinsights-workspace/azurerm"
+  version                                   = "0.4.2"
+  name                                      = "IL-log-cind-test"
+  location                                  = local.rg_location
+  resource_group_name                       = local.rg_name
+  log_analytics_workspace_sku               = "PerGB2018"
+  log_analytics_workspace_retention_in_days = 30
+  enable_telemetry                          = false
+  tags = {
+    created_by = "terraform"
+  }
+}
+
+module "privatednszone" {
+  source           = "Azure/avm-res-network-privatednszone/azurerm"
+  version          = "0.4.3"
+  parent_id        = local.rg_id
+  domain_name      = "privatelink.vaultcore.azure.net"
+  enable_telemetry = false
 }

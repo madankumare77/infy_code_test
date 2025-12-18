@@ -1,64 +1,64 @@
 locals {
   virtual_networks = {
     vnet1 = {
-      cind-claims = {
-        create                 = false # This is the switch to vnet: true will create the vnet and false will destroy
-        location               = "centralindia"
-        address_space          = "100.122.96.0/24"
-        enable_ddos_protection = false
-        dns_servers            = ["168.63.129.16"]
-        tags                   = { created_by = "terraform" }
+      create                 = true # This is the switch to vnet: true will create the vnet and false will destroy
+      name                   = "cind-claims"
+      location               = "centralindia"
+      address_space          = "100.122.96.0/24"
+      enable_ddos_protection = false
+      dns_servers            = ["168.63.129.16"]
+      tags                   = { created_by = "terraform" }
 
-        subnet_configs = { # you can add map of object to create the subnets and remove the code will destroy the subnet
-          cind-pvt = {
-            address_prefix    = "100.122.96.0/27"
-            service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
-          }
+      subnet_configs = { # you can add map of object to create the subnets and remove the code will destroy the subnet
+        cind-pvt = {
+          address_prefix    = "100.122.96.0/27"
+          service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
+        }
 
-          cind-cosmosdb = {
-            address_prefix    = "100.122.96.32/28"
-            service_endpoints = ["Microsoft.AzureCosmosDB"]
-          }
+        cind-cosmosdb = {
+          address_prefix    = "100.122.96.32/28"
+          service_endpoints = ["Microsoft.AzureCosmosDB"]
+        }
 
-          cind-aiservice = {
-            address_prefix = "100.122.96.48/28"
-          }
+        cind-aiservice = {
+          address_prefix = "100.122.96.48/28"
+        }
 
-          cind-funtionsapp = {
-            address_prefix    = "100.122.96.64/28"
-            service_endpoints = ["Microsoft.Storage", "Microsoft.Web"]
-            delegation = {
-              name = "functionapp"
-              service_delegation = {
-                name    = "Microsoft.Web/serverFarms"
-                actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-              }
+        cind-funtionsapp = {
+          address_prefix    = "100.122.96.64/28"
+          service_endpoints = ["Microsoft.Storage", "Microsoft.Web"]
+          delegation = {
+            name = "functionapp"
+            service_delegation = {
+              name    = "Microsoft.Web/serverFarms"
+              actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
             }
           }
         }
       }
+    }
 
-      cind-claims2 = {
-        create                 = false
-        location               = "centralindia"
-        address_space          = "101.122.96.0/24"
-        enable_ddos_protection = false
-        dns_servers            = []
-        tags                   = { created_by = "terraform" }
+    vnet2 = {
+      create                 = false
+      name                   = "cind-claims2"
+      location               = "centralindia"
+      address_space          = "101.122.96.0/24"
+      enable_ddos_protection = false
+      dns_servers            = []
+      tags                   = { created_by = "terraform" }
 
-        subnet_configs = {
-          cind-pvt = {
-            address_prefix    = "101.122.96.0/27"
-            service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
-          }
-          cind-aiservice = {
-            address_prefix = "101.122.96.48/28"
-            delegation = {
-              name = "functionapp"
-              service_delegation = {
-                name    = "Microsoft.Web/serverFarms"
-                actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-              }
+      subnet_configs = {
+        cind-pvt = {
+          address_prefix    = "101.122.96.0/27"
+          service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
+        }
+        cind-aiservice = {
+          address_prefix = "101.122.96.48/28"
+          delegation = {
+            name = "functionapp"
+            service_delegation = {
+              name    = "Microsoft.Web/serverFarms"
+              actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
             }
           }
         }
