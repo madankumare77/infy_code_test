@@ -1,0 +1,43 @@
+name: "terraform-state"
+description: "Store Terraform state for your GitHub Actions as an encrypted artifact or repository file."
+author: "Andrew Riggs"
+
+inputs:
+  encryption_key:
+    description: "AES-256 Encryption key used to encrypt/decrypt the Terraform state file."
+    required: false
+
+  operation:
+    description: "Specifies if the operation is to download or upload the Terraform state file. [Options: download/upload]"
+    required: true
+
+  location:
+    description: "Specifies the storage location of the Terraform state file. [Options: repository/artifact]"
+    required: true
+
+  directory:
+    description: "Directory of the Terraform state file."
+    required: false
+    default: environments/test
+
+  github_token:
+    description: "GitHub Access Token used to retrieve latest artifact."
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure Git User
+      shell: bash
+      run: |
+        git config --global user.name "Madan Kumar Eligeti"
+        git config --global user.email "madankumare77@gmail.com"
+
+    # Repository File
+    - name: Commit Repository File
+      if: "${{ inputs.location == 'repository' && inputs.operation == 'upload' && inputs.encryption_key == '' }}"
+      shell: bash
+      run: |
+        git add ${{ inputs.directory }}/terraform.tfstate
+        git commit -m " Automatically Updated Terraform State."
+        git push
