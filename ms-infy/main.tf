@@ -215,7 +215,7 @@ module "keyvault" {
   source  = "Azure/avm-res-keyvault-vault/azurerm"
   version = "0.10.2"
   # insert the 4 required variables here
-  name                            = "kv001-test-infy"
+  name                            = "kv002-test-infy"
   location                        = local.rg_location
   resource_group_name             = local.rg_name
   tenant_id                       = var.tenant_id
@@ -238,7 +238,7 @@ module "keyvault" {
   }
   private_endpoints = {
     "kv-pe" = {
-      name                            = "pvt-endpoint-kv001-test-infy" # optional
+      name                            = "pvt-endpoint-kv002-test-infy" # optional
       subnet_resource_id              = module.vnet[lookup(local.vnet_name_to_key, "vnet1", "vnet1")].subnets["cind-pvt"].resource_id
       private_service_connection_name = "kv001-test-infy-psc" # optional
       #private_dns_zone_resource_ids = [azurerm_private_dns_zone.kv_dns.id]            # optional set(string)
@@ -250,7 +250,7 @@ module "keyvault" {
   # or provide an event hub / storage account id instead.
   diagnostic_settings = {
     "kv-diag" = {
-      name                  = "diag-kv001-test-infy"
+      name                  = "diag-kv002-test-infy"
       workspace_resource_id = module.law.resource_id
       # Optional: lists of log and metric categories to enable
       log_categories    = ["AuditEvent"]
