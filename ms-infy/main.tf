@@ -208,5 +208,7 @@ module "keyvault" {
   enabled_for_disk_encryption     = true
   enabled_for_template_deployment = true
   public_network_access_enabled   = false
-  tags                            = "terraform"
+  tags = {
+    created_by = "terraform"
+  }
 }
