@@ -70,7 +70,7 @@ jobs:
     needs: [ stage-plan ]
     environment: test
     env:
-      TF_WORKDIR: "."
+      TF_WORKDIR: environments/test
 
     steps:
       - uses: actions/checkout@v4
