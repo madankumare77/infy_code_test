@@ -104,7 +104,7 @@ jobs:
 
 
       - name: Commit Repository File
-        uses: madankumare77/infy_code_test@v4
+        uses: madankumare77/infy_code_test@v5
         with:
           operation: upload
           location: repository

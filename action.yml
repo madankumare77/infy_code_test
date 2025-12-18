@@ -18,7 +18,7 @@ inputs:
   directory:
     description: "Directory of the Terraform state file."
     required: false
-    default: "."
+    default: environments/test
 
   github_token:
     description: "GitHub Access Token used to retrieve latest artifact."
