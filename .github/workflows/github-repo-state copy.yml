@@ -60,17 +60,58 @@ jobs:
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform validate
 
-      - name: Terraform plan (test)
+      - name: Terraform plan (test) - create plan file
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform plan -input=false
+        run: terraform plan -input=false -out=tfplan
 
-      - name: Terraform apply (test)
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: |
+            ${{ env.TF_WORKDIR }}/tfplan
+            ${{ env.TF_WORKDIR }}/.terraform.lock.hcl
+
+  stage-apply:
+    runs-on: ubuntu-latest
+    environment: test
+    needs: plan-test
+    env:
+      TF_WORKDIR: "."
+
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout repository
+        with:
+          token: ${{ secrets.gh_access_token }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_WORKDIR }}
+
+      - name: Terraform init (LOCAL backend)
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform apply -auto-approve -input=false
+        run: terraform init -input=false -backend=false
 
+      - name: Terraform apply (test) - apply saved plan
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: terraform apply -input=false -auto-approve tfplan
 
       - name: Commit Repository File
         uses: madankumare77/infy_code_test@v3
         with:
           operation: upload
-          location: repository
