@@ -4,6 +4,11 @@ name: Github-repo-state
 on:
   workflow_dispatch:
 
+  push:
+    paths-ignore:
+      - "**.tfstate"
+      - "**.tfstate.encrypted"
+
 permissions:
   contents: write         # action will commit/push encrypted state
   id-token: write         # required for Azure OIDC login
@@ -180,7 +185,7 @@ jobs:
       #     github_token: ${{ secrets.gh_access_token }}
 
       - name: Commit Repository File
-        uses: madankumare77/infy_code_test@v3            #badgerhobbs/terraform-state@v2
+        uses: madankumare77/infy_code_test@v4            #badgerhobbs/terraform-state@v2
         with:
           operation: upload
           location: repository
