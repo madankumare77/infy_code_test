@@ -40,7 +40,7 @@ jobs:
 
       #Decrypt/download state into repo (repo root expected)
       - name: Decrypt Repository File
-        uses: badgerhobbs/terraform-state@v2
+        uses: actions/checkout@v4
         with:
           encryption_key: ${{ secrets.encryption_key }}
           operation: download
@@ -95,7 +95,7 @@ jobs:
 
       #Decrypt/download state into repo (repo root expected)
       - name: Decrypt Repository File
-        uses: badgerhobbs/terraform-state@v2
+        uses: actions/checkout@v4
         with:
           encryption_key: ${{ secrets.encryption_key }}
           operation: download
@@ -137,7 +137,7 @@ jobs:
 
       #Encrypt + commit/push state in repo root
       - name: Encrypt and Commit Repository File
-        uses: badgerhobbs/terraform-state@v2
+        uses: actions/checkout@v4
         with:
           encryption_key: ${{ secrets.encryption_key }}
           operation: upload
