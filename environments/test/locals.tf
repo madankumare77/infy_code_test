@@ -162,29 +162,6 @@ locals {
   # Key Vault configuration: all key vaults and their options are defined here
  locals { 
   keyvault_configs = {
-    kv004 = {
-      name                            = "kv004-test-infy"
-      location                        = "centralindia"
-      soft_delete_retention_days      = 7
-      purge_protection_enabled        = true
-      legacy_access_policies_enabled  = false
-      enabled_for_deployment          = true
-      enabled_for_disk_encryption     = true
-      enabled_for_template_deployment = true
-      public_network_access_enabled   = false
-      enable_telemetry                = false
-      network_acls = {
-        bypass         = "AzureServices"
-        default_action = "Deny"
-        # No subnet for this one
-        virtual_network_subnet_ids = []
-      }
-      # No private_endpoints or diagnostic_settings for this one
-      tags = {
-        created_by = "terraform"
-        keyvault   = "kv004"
-      }
-    }
     kv003 = {
       name                            = "kv003-test-infy"
       location                        = "centralindia"
@@ -213,7 +190,7 @@ locals {
           name                            = "pvt-endpoint-kv003-test-infy"
           vnet_key                        = "vnet1"
           subnet_key                      = "cind-pvt"
-          private_service_connection_name = "kv001-test-infy-psc"
+          #private_service_connection_name = "kv001-test-infy-psc"
           privatednszone                  = "kv" # if true, will add privatednszone resource id
           tags                            = { env = "test" }
         }

@@ -301,3 +301,13 @@ module "privatednszone" {
 variable "enable_private_dns_zone" {
   default = true
 }
+
+
+# module "avm-res-documentdb-databaseaccount" {
+#   source  = "Azure/avm-res-documentdb-databaseaccount/azurerm"
+#   version = "0.10.0"
+#   # insert the 3 required variables here
+#   name = "cosd-cind-mk-test"
+#   location = local.rg_location
+#   resource_group_name = local.rg_name
+# }
