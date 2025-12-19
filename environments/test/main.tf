@@ -157,45 +157,45 @@ module "vnet" {
   # Module expects a map(object). We preserve the original keys as the map keys and
   # ensure each subnet object contains a `name` attribute (required by the module).
 
-  # subnets = {
-  #   for sn_k, sn in each.value.subnet_configs : sn_k => {
-  #     name = sn_k
+  subnets = {
+    for sn_k, sn in each.value.subnet_configs : sn_k => {
+      name = sn_k
 
-  #     # ALWAYS provide address_prefixes
-  #     address_prefixes = [
-  #       coalesce(try(sn.address_prefix, null), try(sn.address_prefixes[0], null))
-  #     ]
+      # ALWAYS provide address_prefixes
+      address_prefixes = [
+        coalesce(try(sn.address_prefix, null), try(sn.address_prefixes[0], null))
+      ]
 
-  #     # ALWAYS provide service_endpoints as a set (empty set if none)
-  #     service_endpoints = toset(try(sn.service_endpoints, []))
+      # ALWAYS provide service_endpoints as a set (empty set if none)
+      service_endpoints = toset(try(sn.service_endpoints, []))
 
-  #     delegation = try(sn.delegation, null) != null ? [sn.delegation] : null
+      delegation = try(sn.delegation, null) != null ? [sn.delegation] : null
 
-  #     private_endpoint_network_policies             = try(sn.private_endpoint_network_policies, null)
-  #     private_link_service_network_policies_enabled = try(sn.private_link_service_network_policies_enabled, true)
+      private_endpoint_network_policies             = try(sn.private_endpoint_network_policies, null)
+      private_link_service_network_policies_enabled = try(sn.private_link_service_network_policies_enabled, true)
 
-  #     route_table = try(sn.route_table, null) != null ? sn.route_table : (
-  #       try(sn.route_table_id, null) != null ? { id = sn.route_table_id } : null
-  #     )
+      route_table = try(sn.route_table, null) != null ? sn.route_table : (
+        try(sn.route_table_id, null) != null ? { id = sn.route_table_id } : null
+      )
 
-  #     #Manage NSG ONLY here (if you want NSG association)
-  #     network_security_group = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) != null ? { id = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) }: null
+      #Manage NSG ONLY here (if you want NSG association)
+      network_security_group = try(sn.nsg_id, null) != null ? local.nsg_ids[sn.nsg_id] : null #try(module.nsg[k.nsg_id], "")
 
-  #     tags = null
-  #   }
-  # }
-  subnets = (
-    contains(keys(each.value), "subnet_configs") && length(each.value.subnet_configs) > 0
-    ? {
-      for s, k in each.value.subnet_configs :
-      s => merge(k, {
-        name                   = each.key
-        network_security_group = try(k.nsg_id, null) != null ? local.nsg_ids[k.nsg_id] : null #try(module.nsg[k.nsg_id], "")
-        delegation             = try(k.delegation, null) != null ? [k.delegation] : null
-      })
+      tags = null
     }
-    : null
-  )
+  }
+  # subnets = (
+  #   contains(keys(each.value), "subnet_configs") && length(each.value.subnet_configs) > 0
+  #   ? {
+  #     for s, k in each.value.subnet_configs :
+  #     s => merge(k, {
+  #       name                   = each.key
+  #       network_security_group = try(k.nsg_id, null) != null ? local.nsg_ids[k.nsg_id] : null #try(module.nsg[k.nsg_id], "")
+  #       delegation             = try(k.delegation, null) != null ? [k.delegation] : null
+  #     })
+  #   }
+  #   : null
+  # )
 
 }
 
