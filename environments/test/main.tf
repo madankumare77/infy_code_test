@@ -105,6 +105,7 @@ module "nsg" {
 
   # Module expects a map(object) keyed by rule name. Convert list -> map when provided.
   security_rules = length(try(each.value.security_rules, [])) > 0 ? { for r in each.value.security_rules : r.name => r } : {}
+  enable_telemetry = false
 
 }
 
@@ -155,44 +156,47 @@ module "vnet" {
   # (destroy) that subnet on apply.
   # Module expects a map(object). We preserve the original keys as the map keys and
   # ensure each subnet object contains a `name` attribute (required by the module).
-  subnets = {
-    for sn_k, sn in each.value.subnet_configs : sn_k => {
-      name = sn_k
 
-      # address: support single address_prefix or pre-populated address_prefixes
-      address_prefixes = sn.address_prefix != null ? [sn.address_prefix] : try(sn.address_prefixes, null)
-
-      # service_endpoints: module expects a set(string)
-      service_endpoints = try(sn.service_endpoints, null) != null ? toset(sn.service_endpoints) : null
-
-      # delegation: module expects a list(object) when present
-      delegation = try(sn.delegation, null) != null ? [sn.delegation] : null
-
-      private_endpoint_network_policies             = try(sn.private_endpoint_network_policies, null)
-      private_link_service_network_policies_enabled = try(sn.private_link_service_network_policies_enabled, true)
-
-      # route_table can be provided either as { id = ... } or via route_table_id in tfvars
-      route_table = try(sn.route_table, null) != null ? sn.route_table : (try(sn.route_table_id, null) != null ? { id = sn.route_table_id } : null)
-
-      nat_gateway = try(sn.nat_gateway, null)
-      # Network security groups are managed by the separate
-      # `azurerm_subnet_network_security_group_association` resources below
-      # (driven from var.nsg_associations). Avoid setting the
-      # `networkSecurityGroup` property in the subnet body to prevent
-      # provider-side churn where the attribute flips between null and an id.
-      service_endpoint_policies       = try(sn.service_endpoint_policies, null)
-      default_outbound_access_enabled = try(sn.default_outbound_access_enabled, null)
-      sharing_scope                   = try(sn.sharing_scope, null)
-
-      # When an association exists for this vnet.subnet, explicitly set the
-      # subnet's networkSecurityGroup property so the azapi subnet resource's
-      # body matches the association resource and avoids churn.
-      network_security_group = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) != null ? { id = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) } : null
-
-      timeouts         = try(sn.timeouts, null)
-      role_assignments = try(sn.role_assignments, null)
+  # subnets = {
+  #   for sn_k, sn in each.value.subnet_configs : sn_k => {
+  #     name = sn_k
+  
+  #     # ALWAYS provide address_prefixes
+  #     address_prefixes = [
+  #       coalesce(try(sn.address_prefix, null), try(sn.address_prefixes[0], null))
+  #     ]
+  
+  #     # ALWAYS provide service_endpoints as a set (empty set if none)
+  #     service_endpoints = toset(try(sn.service_endpoints, []))
+  
+  #     delegation = try(sn.delegation, null) != null ? [sn.delegation] : null
+  
+  #     private_endpoint_network_policies             = try(sn.private_endpoint_network_policies, null)
+  #     private_link_service_network_policies_enabled = try(sn.private_link_service_network_policies_enabled, true)
+  
+  #     route_table = try(sn.route_table, null) != null ? sn.route_table : (
+  #       try(sn.route_table_id, null) != null ? { id = sn.route_table_id } : null
+  #     )
+  
+  #     #Manage NSG ONLY here (if you want NSG association)
+  #     network_security_group = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) != null ? { id = lookup(local.subnet_nsg_map, "${each.key}.${sn_k}", null) }: null
+  
+  #     tags = null
+  #   }
+  # }
+  subnets = (
+    contains(keys(each.value), "subnet_configs") && length(each.value.subnet_configs) > 0
+    ? {
+      for s, k in each.value.subnet_configs:
+      s => merge(k,{
+        name = each.key
+        network_security_group = try(k.nsg_id, null) != null ? local.nsg_ids[k.nsg_id] : null #try(module.nsg[k.nsg_id], "")
+        delegation = try(k.delegation, null) != null ? [k.delegation] : null
+      })
     }
-  }
+    : null
+  )
+
 }
 
 ########################################
@@ -201,15 +205,15 @@ module "vnet" {
 # `local.effective_nsg_associations` (prefer `var.nsg_associations` when set).
 ########################################
 
-resource "azurerm_subnet_network_security_group_association" "assoc" {
-  # Associations are created for every entry present in `local.effective_nsg_associations`.
-  # Removing an entry from the map (e.g., comment/remove it from `ms-infy/locals.tf`) will
-  # cause Terraform to plan the association's destruction on the next apply.
-  for_each = { for k, a in local.effective_nsg_associations : k => a }
+# resource "azurerm_subnet_network_security_group_association" "assoc" {
+#   # Associations are created for every entry present in `local.effective_nsg_associations`.
+#   # Removing an entry from the map (e.g., comment/remove it from `ms-infy/locals.tf`) will
+#   # cause Terraform to plan the association's destruction on the next apply.
+#   for_each = { for k, a in local.effective_nsg_associations : k => a }
 
-  subnet_id                 = module.vnet[lookup(local.vnet_name_to_key, each.value.vnet_key, each.value.vnet_key)].subnets[each.value.subnet_key].resource_id
-  network_security_group_id = local.nsg_ids[each.value.nsg_key]
-}
+#   subnet_id                 = module.vnet[lookup(local.vnet_name_to_key, each.value.vnet_key, each.value.vnet_key)].subnets[each.value.subnet_key].resource_id
+#   network_security_group_id = local.nsg_ids[each.value.nsg_key]
+# }
 
 
 # Single keyvault module, for_each over local.effective_keyvault_configs

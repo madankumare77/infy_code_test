@@ -13,6 +13,7 @@ locals {
         cind-pvt = {
           address_prefix    = "100.122.96.0/27"
           service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
+          nsg_key               = "nsg1"
         }
 
         cind-cosmosdb = {
@@ -69,23 +70,23 @@ locals {
   #This is the nsg configuration. create true will try to create new nsg.
   #create = false will import the existing nsg. required nsg name.
   nsg_configs = {
-    # nsg1 = {
-    #   create   = true
-    #   nsg_name = "nsg-infy-test2"
-    #   security_rules = [
-    #     {
-    #       name                       = "Allow-InBound"
-    #       priority                   = 500
-    #       direction                  = "Inbound"
-    #       access                     = "Allow"
-    #       protocol                   = "Tcp"
-    #       source_address_prefix      = "*"
-    #       destination_address_prefix = "VirtualNetwork"
-    #       source_port_range          = "*"
-    #       destination_port_range     = "443"
-    #     }
-    #   ]
-    # }
+    nsg1 = {
+      create   = true
+      nsg_name = "nsg-infy-test"
+      security_rules = [
+        {
+          name                       = "Allow-InBound"
+          priority                   = 500
+          direction                  = "Inbound"
+          access                     = "Allow"
+          protocol                   = "Tcp"
+          source_address_prefix      = "*"
+          destination_address_prefix = "VirtualNetwork"
+          source_port_range          = "*"
+          destination_port_range     = "443"
+        }
+      ]
+    }
 
     # nsg2 = {
     #   create   = true
