@@ -1,6 +1,5 @@
-
-#this is the working workflow. it will work in rook directory
-name: Github-repo-state-copy
+#This action file coped from ms-infy folder
+name: Github-repo-state-Encrypt
 
 on:
   workflow_dispatch:
@@ -29,13 +28,21 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     env:
-      TF_WORKDIR: "."
+      TF_WORKDIR: environments/test
 
     steps:
       - uses: actions/checkout@v4
         name: Checkout repository
         with:
           token: ${{ secrets.gh_access_token }}
+
+      - name: Decrypt Repository File
+        uses: madankumare77/infy_code_test@v5
+        with:
+          encryption_key: ${{ secrets.encryption_key }}
+          operation: download
+          location: repository
+        continue-on-error: true
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -71,13 +78,21 @@ jobs:
     needs: [ stage-plan ]
     environment: test
     env:
-      TF_WORKDIR: "."
+      TF_WORKDIR: environments/test
 
     steps:
       - uses: actions/checkout@v4
         name: Checkout repository
         with:
           token: ${{ secrets.gh_access_token }}
+
+      - name: Decrypt Repository File
+        uses: madankumare77/infy_code_test@v5
+        with:
+          encryption_key: ${{ secrets.encryption_key }}
+          operation: download
+          location: repository
+        continue-on-error: true
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -104,8 +119,14 @@ jobs:
         run: terraform apply -auto-approve -input=false
 
 
-      - name: Commit Repository File
-        uses: madankumare77/infy_code_test@v3
+      - name: List all files and directories
+        run: |
+          echo "List all directories and files in the GitHub workspace"
+          ls -R
+
+      - name: Encrypt and Commit Repository File
+        uses: madankumare77/infy_code_test@v5
         with:
+          encryption_key: ${{ secrets.encryption_key }}
           operation: upload
           location: repository

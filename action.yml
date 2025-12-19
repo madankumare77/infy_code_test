@@ -104,18 +104,18 @@ runs:
         git commit -m " Automatically Updated Terraform State."
         git push
 
-    # # Encrypted Repository File
-    # - name: Decrypt Repository File
-    #   if: "${{ inputs.location == 'repository' && inputs.operation == 'download' && inputs.encryption_key != '' }}"
-    #   shell: bash
-    #   run: |
-    #     openssl enc -d -aes256 -in ${{ inputs.directory }}/terraform.tfstate.encrypted -out ${{ inputs.directory }}/terraform.tfstate -k ${{ inputs.encryption_key }}
+    # Encrypted Repository File
+    - name: Decrypt Repository File
+      if: "${{ inputs.location == 'repository' && inputs.operation == 'download' && inputs.encryption_key != '' }}"
+      shell: bash
+      run: |
+        openssl enc -d -aes256 -in ${{ inputs.directory }}/terraform.tfstate.encrypted -out ${{ inputs.directory }}/terraform.tfstate -k ${{ inputs.encryption_key }}
 
-    # - name: Encrypt and Commit Repository File
-    #   if: "${{ inputs.location == 'repository' && inputs.operation == 'upload' && inputs.encryption_key != '' }}"
-    #   shell: bash
-    #   run: |
-    #     openssl enc -e -aes256 -in ${{ inputs.directory }}/terraform.tfstate -out ${{ inputs.directory }}/terraform.tfstate.encrypted -k ${{ inputs.encryption_key }}
-    #     git add ${{ inputs.directory }}/terraform.tfstate.encrypted
-    #     git commit -m " Automatically Updated Encrypted Terraform State."
-    #     git push
+    - name: Encrypt and Commit Repository File
+      if: "${{ inputs.location == 'repository' && inputs.operation == 'upload' && inputs.encryption_key != '' }}"
+      shell: bash
+      run: |
+        openssl enc -e -aes256 -in ${{ inputs.directory }}/terraform.tfstate -out ${{ inputs.directory }}/terraform.tfstate.encrypted -k ${{ inputs.encryption_key }}
+        git add ${{ inputs.directory }}/terraform.tfstate.encrypted
+        git commit -m " Automatically Updated Encrypted Terraform State."
+        git push

@@ -1,7 +1,7 @@
 locals {
   virtual_networks = {
     vnet1 = {
-      create                 = true # This is the switch to vnet: true will create the vnet and false will destroy
+      create                 = false # This is the switch to vnet: true will create the vnet and false will destroy
       name                   = "cind-claims"
       location               = "centralindia"
       address_space          = "100.122.96.0/24"
