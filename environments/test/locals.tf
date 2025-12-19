@@ -159,8 +159,8 @@ locals {
   effective_resource_group = local.resource_group
 }
 
-  # Key Vault configuration: all key vaults and their options are defined here
- locals { 
+# Key Vault configuration: all key vaults and their options are defined here
+locals {
   keyvault_configs = {
     kv003 = {
       name                            = "kv003-test-infy"
@@ -187,21 +187,21 @@ locals {
       }
       private_endpoints = {
         kvpe = {
-          name                            = "pvt-endpoint-kv003-test-infy"
-          vnet_key                        = "vnet1"
-          subnet_key                      = "cind-pvt"
+          name       = "pvt-endpoint-kv003-test-infy"
+          vnet_key   = "vnet1"
+          subnet_key = "cind-pvt"
           #private_service_connection_name = "kv001-test-infy-psc"
-          privatednszone                  = "kv" # if true, will add privatednszone resource id
-          tags                            = { env = "test" }
+          privatednszone = "kv" # if true, will add privatednszone resource id
+          tags           = { env = "test" }
         }
       }
       diagnostic_settings = {
         kvdiag = {
-          name                  = "diag-kv003-test-infy"
-          enable                = true
-          log_categories        = ["AuditEvent"]
-          log_groups            = []
-          metric_categories     = ["AllMetrics"]
+          name              = "diag-kv003-test-infy"
+          enable            = true
+          log_categories    = ["AuditEvent"]
+          log_groups        = []
+          metric_categories = ["AllMetrics"]
         }
       }
       tags = {
@@ -209,4 +209,4 @@ locals {
       }
     }
   }
- }
+}

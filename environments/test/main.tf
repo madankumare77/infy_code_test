@@ -215,8 +215,8 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
 # Single keyvault module, for_each over local.effective_keyvault_configs
 module "keyvault" {
   for_each = local.effective_keyvault_configs
-  source  = "Azure/avm-res-keyvault-vault/azurerm"
-  version = "0.10.2"
+  source   = "Azure/avm-res-keyvault-vault/azurerm"
+  version  = "0.10.2"
 
   name                            = each.value.name
   location                        = each.value.location
@@ -245,23 +245,23 @@ module "keyvault" {
   private_endpoints = (
     contains(keys(each.value), "private_endpoints") && length(each.value.private_endpoints) > 0
     ? {
-        for pe_k, pe in each.value.private_endpoints :
-        pe_k => merge(pe, {
-          subnet_resource_id = module.vnet[lookup(local.vnet_name_to_key, pe.vnet_key, pe.vnet_key)].subnets[pe.subnet_key].resource_id,
-          private_dns_zone_resource_ids = try([module.privatednszone[pe.privatednszone].resource_id], [])
-        })
-      }
+      for pe_k, pe in each.value.private_endpoints :
+      pe_k => merge(pe, {
+        subnet_resource_id            = module.vnet[lookup(local.vnet_name_to_key, pe.vnet_key, pe.vnet_key)].subnets[pe.subnet_key].resource_id,
+        private_dns_zone_resource_ids = try([module.privatednszone[pe.privatednszone].resource_id], [])
+      })
+    }
     : null
   )
 
   diagnostic_settings = (
     contains(keys(each.value), "diagnostic_settings") && length(each.value.diagnostic_settings) > 0
     ? {
-        for diag_k, diag in each.value.diagnostic_settings :
-        diag_k => merge(diag, {
-          workspace_resource_id = module.law.resource_id
-        })
-      }
+      for diag_k, diag in each.value.diagnostic_settings :
+      diag_k => merge(diag, {
+        workspace_resource_id = module.law.resource_id
+      })
+    }
     : null
   )
 }
@@ -290,7 +290,7 @@ locals {
 }
 
 module "privatednszone" {
-  for_each = var.enable_private_dns_zone ? local.private_dns_zones : {}
+  for_each         = var.enable_private_dns_zone ? local.private_dns_zones : {}
   source           = "Azure/avm-res-network-privatednszone/azurerm"
   version          = "0.4.3"
   parent_id        = local.rg_id
