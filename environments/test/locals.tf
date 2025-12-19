@@ -13,7 +13,7 @@ locals {
         cind-pvt = {
           address_prefix    = "100.122.96.0/27"
           service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
-          nsg_key               = "nsg1"
+          nsg_key           = "nsg1"
         }
 
         cind-cosmosdb = {
