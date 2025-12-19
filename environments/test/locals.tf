@@ -145,6 +145,7 @@ locals {
   effective_virtual_networks = { for k, v in local.virtual_networks : k => { for ik, iv in v : ik => iv } }
   effective_nsg_configs      = { for k, v in local.nsg_configs : k => v }
   effective_nsg_associations = { for k, v in local.nsg_associations : k => v }
+  effective_keyvault_configs = { for k, v in local.keyvault_configs : k => v }
 
   # Resource group defaults (migrated from env tfvars). Use
   # local.effective_resource_group in place of the old `var.resource_group`.
@@ -157,3 +158,78 @@ locals {
 
   effective_resource_group = local.resource_group
 }
+
+  # Key Vault configuration: all key vaults and their options are defined here
+ locals { 
+  keyvault_configs = {
+    kv004 = {
+      name                            = "kv004-test-infy"
+      location                        = "centralindia"
+      soft_delete_retention_days      = 7
+      purge_protection_enabled        = true
+      legacy_access_policies_enabled  = false
+      enabled_for_deployment          = true
+      enabled_for_disk_encryption     = true
+      enabled_for_template_deployment = true
+      public_network_access_enabled   = false
+      enable_telemetry                = false
+      network_acls = {
+        bypass         = "AzureServices"
+        default_action = "Deny"
+        # No subnet for this one
+        virtual_network_subnet_ids = []
+      }
+      # No private_endpoints or diagnostic_settings for this one
+      tags = {
+        created_by = "terraform"
+        keyvault   = "kv004"
+      }
+    }
+    kv003 = {
+      name                            = "kv003-test-infy"
+      location                        = "centralindia"
+      soft_delete_retention_days      = 7
+      purge_protection_enabled        = true
+      legacy_access_policies_enabled  = false
+      enabled_for_deployment          = true
+      enabled_for_disk_encryption     = true
+      enabled_for_template_deployment = true
+      public_network_access_enabled   = false
+      enable_telemetry                = false
+      network_acls = {
+        bypass         = "AzureServices"
+        default_action = "Deny"
+        virtual_network_subnet_ids = [
+          # Reference subnet resource id dynamically in main.tf
+          # Will be resolved in main.tf using vnet_name_to_key
+          {
+            vnet_key   = "vnet1"
+            subnet_key = "cind-pvt"
+          }
+        ]
+      }
+      private_endpoints = {
+        kvpe = {
+          name                            = "pvt-endpoint-kv003-test-infy"
+          vnet_key                        = "vnet1"
+          subnet_key                      = "cind-pvt"
+          private_service_connection_name = "kv001-test-infy-psc"
+          privatednszone                  = "kv" # if true, will add privatednszone resource id
+          tags                            = { env = "test" }
+        }
+      }
+      diagnostic_settings = {
+        kvdiag = {
+          name                  = "diag-kv003-test-infy"
+          enable                = true
+          log_categories        = ["AuditEvent"]
+          log_groups            = []
+          metric_categories     = ["AllMetrics"]
+        }
+      }
+      tags = {
+        created_by = "terraform"
+      }
+    }
+  }
+ }

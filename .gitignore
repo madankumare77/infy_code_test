@@ -1,0 +1,15 @@
+## Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate
+.terraform.tfstate.backup
+.terraform.lock.hcl
+
+
+environments\test\.terraform/
+environments\test\*.tfstate
+environments\test\*.tfstate.*
+environments\test\terraform.tfstate
+environments\test\.terraform.tfstate.backup
+environments\test\.terraform.lock.hcl
