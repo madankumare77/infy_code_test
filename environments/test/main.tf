@@ -216,95 +216,95 @@ module "vnet" {
 # }
 
 
-# Single keyvault module, for_each over local.effective_keyvault_configs
-module "keyvault" {
-  for_each = local.effective_keyvault_configs
-  source   = "Azure/avm-res-keyvault-vault/azurerm"
-  version  = "0.10.2"
+# # Single keyvault module, for_each over local.effective_keyvault_configs
+# module "keyvault" {
+#   for_each = local.effective_keyvault_configs
+#   source   = "Azure/avm-res-keyvault-vault/azurerm"
+#   version  = "0.10.2"
 
-  name                            = each.value.name
-  location                        = each.value.location
-  resource_group_name             = local.rg_name
-  tenant_id                       = var.tenant_id
-  soft_delete_retention_days      = each.value.soft_delete_retention_days
-  purge_protection_enabled        = each.value.purge_protection_enabled
-  legacy_access_policies_enabled  = each.value.legacy_access_policies_enabled
-  enabled_for_deployment          = each.value.enabled_for_deployment
-  enabled_for_disk_encryption     = each.value.enabled_for_disk_encryption
-  enabled_for_template_deployment = each.value.enabled_for_template_deployment
-  public_network_access_enabled   = each.value.public_network_access_enabled
-  enable_telemetry                = each.value.enable_telemetry
-  tags                            = each.value.tags
+#   name                            = each.value.name
+#   location                        = each.value.location
+#   resource_group_name             = local.rg_name
+#   tenant_id                       = var.tenant_id
+#   soft_delete_retention_days      = each.value.soft_delete_retention_days
+#   purge_protection_enabled        = each.value.purge_protection_enabled
+#   legacy_access_policies_enabled  = each.value.legacy_access_policies_enabled
+#   enabled_for_deployment          = each.value.enabled_for_deployment
+#   enabled_for_disk_encryption     = each.value.enabled_for_disk_encryption
+#   enabled_for_template_deployment = each.value.enabled_for_template_deployment
+#   public_network_access_enabled   = each.value.public_network_access_enabled
+#   enable_telemetry                = each.value.enable_telemetry
+#   tags                            = each.value.tags
 
-  network_acls = merge(
-    each.value.network_acls,
-    {
-      virtual_network_subnet_ids = [
-        for sn in try(each.value.network_acls.virtual_network_subnet_ids, []) :
-        module.vnet[lookup(local.vnet_name_to_key, sn.vnet_key, sn.vnet_key)].subnets[sn.subnet_key].resource_id
-      ]
-    }
-  )
+#   network_acls = merge(
+#     each.value.network_acls,
+#     {
+#       virtual_network_subnet_ids = [
+#         for sn in try(each.value.network_acls.virtual_network_subnet_ids, []) :
+#         module.vnet[lookup(local.vnet_name_to_key, sn.vnet_key, sn.vnet_key)].subnets[sn.subnet_key].resource_id
+#       ]
+#     }
+#   )
 
-  private_endpoints = (
-    contains(keys(each.value), "private_endpoints") && length(each.value.private_endpoints) > 0
-    ? {
-      for pe_k, pe in each.value.private_endpoints :
-      pe_k => merge(pe, {
-        subnet_resource_id            = module.vnet[lookup(local.vnet_name_to_key, pe.vnet_key, pe.vnet_key)].subnets[pe.subnet_key].resource_id,
-        private_dns_zone_resource_ids = try([module.privatednszone[pe.privatednszone].resource_id], [])
-      })
-    }
-    : null
-  )
+#   private_endpoints = (
+#     contains(keys(each.value), "private_endpoints") && length(each.value.private_endpoints) > 0
+#     ? {
+#       for pe_k, pe in each.value.private_endpoints :
+#       pe_k => merge(pe, {
+#         subnet_resource_id            = module.vnet[lookup(local.vnet_name_to_key, pe.vnet_key, pe.vnet_key)].subnets[pe.subnet_key].resource_id,
+#         private_dns_zone_resource_ids = try([module.privatednszone[pe.privatednszone].resource_id], [])
+#       })
+#     }
+#     : null
+#   )
 
-  diagnostic_settings = (
-    contains(keys(each.value), "diagnostic_settings") && length(each.value.diagnostic_settings) > 0
-    ? {
-      for diag_k, diag in each.value.diagnostic_settings :
-      diag_k => merge(diag, {
-        workspace_resource_id = module.law.resource_id
-      })
-    }
-    : null
-  )
-}
+#   diagnostic_settings = (
+#     contains(keys(each.value), "diagnostic_settings") && length(each.value.diagnostic_settings) > 0
+#     ? {
+#       for diag_k, diag in each.value.diagnostic_settings :
+#       diag_k => merge(diag, {
+#         workspace_resource_id = module.law.resource_id
+#       })
+#     }
+#     : null
+#   )
+# }
 
-module "law" {
-  source                                    = "Azure/avm-res-operationalinsights-workspace/azurerm"
-  version                                   = "0.4.2"
-  name                                      = "IL-log-cind-test"
-  location                                  = local.rg_location
-  resource_group_name                       = local.rg_name
-  log_analytics_workspace_sku               = "PerGB2018"
-  log_analytics_workspace_retention_in_days = 30
-  enable_telemetry                          = false
-  tags = {
-    created_by = "terraform"
-  }
-}
+# module "law" {
+#   source                                    = "Azure/avm-res-operationalinsights-workspace/azurerm"
+#   version                                   = "0.4.2"
+#   name                                      = "IL-log-cind-test"
+#   location                                  = local.rg_location
+#   resource_group_name                       = local.rg_name
+#   log_analytics_workspace_sku               = "PerGB2018"
+#   log_analytics_workspace_retention_in_days = 30
+#   enable_telemetry                          = false
+#   tags = {
+#     created_by = "terraform"
+#   }
+# }
 
-locals {
-  private_dns_zones = {
-    kv = {
-      private_dns_zone_name = "privatelink.vaultcore.azure.net"
-      #vnet_id               = try(module.vnet["cind-claims"].vnet_id, "")
-    }
-  }
-}
+# locals {
+#   private_dns_zones = {
+#     kv = {
+#       private_dns_zone_name = "privatelink.vaultcore.azure.net"
+#       #vnet_id               = try(module.vnet["cind-claims"].vnet_id, "")
+#     }
+#   }
+# }
 
-module "privatednszone" {
-  for_each         = var.enable_private_dns_zone ? local.private_dns_zones : {}
-  source           = "Azure/avm-res-network-privatednszone/azurerm"
-  version          = "0.4.3"
-  parent_id        = local.rg_id
-  domain_name      = each.value.private_dns_zone_name
-  enable_telemetry = false
-}
+# module "privatednszone" {
+#   for_each         = var.enable_private_dns_zone ? local.private_dns_zones : {}
+#   source           = "Azure/avm-res-network-privatednszone/azurerm"
+#   version          = "0.4.3"
+#   parent_id        = local.rg_id
+#   domain_name      = each.value.private_dns_zone_name
+#   enable_telemetry = false
+# }
 
-variable "enable_private_dns_zone" {
-  default = true
-}
+# variable "enable_private_dns_zone" {
+#   default = true
+# }
 
 
 # module "avm-res-documentdb-databaseaccount" {
