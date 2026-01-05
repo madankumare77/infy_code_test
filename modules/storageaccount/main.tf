@@ -12,6 +12,7 @@ resource "azurerm_storage_account" "storage" {
   min_tls_version                   = var.min_tls_version #"TLS1_1.2"
   infrastructure_encryption_enabled = var.infrastructure_encryption_enabled
   allow_nested_items_to_be_public   = var.allow_nested_items_to_be_public
+  default_to_oauth_authentication   = true
 
   dynamic "network_rules" {
     for_each = var.snet_id != "" ? [1] : []
@@ -58,7 +59,7 @@ resource "azurerm_storage_account" "storage" {
   }
 
   lifecycle {
-    prevent_destroy = true #var.prevent_storage_account_deletion
+    prevent_destroy = false #var.prevent_storage_account_deletion
   }
 
   tags = merge(

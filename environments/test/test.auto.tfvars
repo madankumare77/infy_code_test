@@ -15,26 +15,26 @@ lock_level     = "CanNotDelete"
 # ───────────────────────────────────────────────────────────────
 #  NETWORKING COMPONENTS
 # ───────────────────────────────────────────────────────────────
-enable_virtual_networks = false # Creates Virtual Network(s) defined in locals/variables
+enable_virtual_networks = true # Creates Virtual Network(s) defined in locals/variables
 enable_nsg              = false # Creates Network Security Groups (NSGs)
 enable_nsg_association  = false # Associates each subnet with its corresponding NSG
 
 # ───────────────────────────────────────────────────────────────
 #  STORAGE ACCOUNT
 # ───────────────────────────────────────────────────────────────
-enable_storage_account = false # Creates Storage Accounts (Blob/File/Queue etc.)
+enable_storage_account = true # Creates Storage Accounts (Blob/File/Queue etc.)
 
 # ───────────────────────────────────────────────────────────────
 #  OBSERVABILITY / MONITORING
 # ───────────────────────────────────────────────────────────────
-enable_log_analytics_workspace = false # Creates a Log Analytics workspace
+enable_log_analytics_workspace = true #Creates a Log Analytics workspace
 enable_diagnostics_settings    = false # Enables Diagnostic Settings for supported resources (send logs/metrics)
-enable_appinsights             = false # Creates an Application Insights instance
+enable_appinsights             = true # Creates an Application Insights instance
 
 # ───────────────────────────────────────────────────────────────
 #  SECURITY AND IDENTITY
 # ───────────────────────────────────────────────────────────────
-enable_kv                 = false # Creates Azure Key Vault
+enable_kv                 = true # Creates Azure Key Vault
 enable_rbac               = false # Enables Role Assignments for modules that require RBAC
 enable_UserAssignedIdenti = false # Creates User Assigned Managed Identity (UAMI)
 
@@ -60,5 +60,5 @@ enable_azure_openai     = false # Creates Azure OpenAI resource (Cognitive accou
 # ───────────────────────────────────────────────────────────────
 #  PRIVATE NETWORKING
 # ───────────────────────────────────────────────────────────────
-enable_private_dns_zone  = false # Creates Private DNS Zones for Private Endpoints
+enable_private_dns_zone  = true # Creates Private DNS Zones for Private Endpoints
 enable_private_endpoints = false # Creates Private Endpoints for supported resources

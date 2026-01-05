@@ -56,7 +56,8 @@ module "nsg_association" {
 module "private_dns_zone" {
   source                = "../../modules/private_dns"
   for_each              = var.enable_private_dns_zone ? local.private_dns_zones : {}
-  rg_name               = data.azurerm_resource_group.rg.name
+  rg_name               = each.value.rg_name
+  create_private_dns_zone = each.value.create_private_dns_zone
   vnet_id               = each.value.vnet_id
   private_dns_zone_name = each.value.private_dns_zone_name
   depends_on            = [module.vnet]
@@ -430,7 +431,7 @@ module "cosmosdb" {
 module "AppInsights" {
   count                      = var.enable_appinsights ? 1 : 0
   source                     = "../../modules/appinsights"
-  name_prefix                = "appinsight-claims-test"
+  name_prefix                = "appinsight-claims-test1"
   env                        = var.env
   location                   = var.location
   rg_name                    = data.azurerm_resource_group.rg.name

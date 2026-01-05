@@ -14,25 +14,25 @@ locals {
           address_prefix    = "100.122.96.0/27"
           service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
         }
-        cind-cosmosdb = {
-          address_prefix    = "100.122.96.32/28"
-          service_endpoints = ["Microsoft.AzureCosmosDB"]
-        }
-        cind-aiservice = {
-          address_prefix = "100.122.96.48/28"
-          #service_endpoints = [""]
-        }
-        cind-funtionsapp = {
-          address_prefix    = "100.122.96.64/28"
-          service_endpoints = ["Microsoft.Storage", "Microsoft.Web"]
-          delegation = {
-            name = "functionapp"
-            service_delegation = {
-              name    = "Microsoft.Web/serverFarms"
-              actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
-            }
-          }
-        }
+        # cind-cosmosdb = {
+        #   address_prefix    = "100.122.96.32/28"
+        #   service_endpoints = ["Microsoft.AzureCosmosDB"]
+        # }
+        # cind-aiservice = {
+        #   address_prefix = "100.122.96.48/28"
+        #   #service_endpoints = [""]
+        # }
+        # cind-funtionsapp = {
+        #   address_prefix    = "100.122.96.64/28"
+        #   service_endpoints = ["Microsoft.Storage", "Microsoft.Web"]
+        #   delegation = {
+        #     name = "functionapp"
+        #     service_delegation = {
+        #       name    = "Microsoft.Web/serverFarms"
+        #       actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+        #     }
+        #   }
+        # }
       }
     }
   }
@@ -74,7 +74,7 @@ locals {
 # Storage account configuration for function app data and blob storage
 locals {
   storage_accounts = {
-    stcindclaims0011 = {
+    stcindclaims0022 = {
       account_tier             = "Standard"
       account_replication_type = "LRS"
       account_kind             = "StorageV2" # StorageV2 for blob storage,, FileStorage for file storage
@@ -95,7 +95,7 @@ locals {
       container_delete_retention_days   = 7
       allow_nested_items_to_be_public   = false
       #prevent_storage_account_deletion  = true
-      private_endpoint_enabled   = false
+      private_endpoint_enabled   = true
       private_dns_zone_id        = try(module.private_dns_zone["storage"].private_dns_zone_id, "")
       enable_storage_diagnostics = false
       log_analytics_workspace_id = try(module.law[0].log_analytics_workspace_id, "")
@@ -162,17 +162,17 @@ locals {
 # Azure Key Vault configurations for secure storage of secrets and certificates
 locals {
   kv_configs = {
-    kv005-cind-claims = {
+    kv007-cind-claims = {
       sku_name                        = "standard"
-      soft_delete_retention_days      = 90
-      purge_protection_enabled        = true
+      soft_delete_retention_days      = 7
+      purge_protection_enabled        = false
       enable_rbac_authorization       = true
       private_endpoint_enabled        = true
       private_dns_zone_id             = try(module.private_dns_zone["kv"].private_dns_zone_id, "")
       public_network_access_enabled   = false
       vnet_id                         = try(module.vnet["cind-claims"].vnet_id, "")
       subnet_id                       = try(module.vnet["cind-claims"].subnet_ids["cind-pvt"], "")
-      enable_kv_diagnostics           = true
+      enable_kv_diagnostics           = false
       log_analytics_workspace_id      = try(module.law[0].log_analytics_workspace_id, "")
       log_categories                  = ["AuditEvent"]
       metric_categories               = ["AllMetrics"]
@@ -527,13 +527,15 @@ locals {
 locals {
   private_dns_zones = {
     kv = {
+      create_private_dns_zone = false
+      rg_name                = data.azurerm_resource_group.rg.name
       private_dns_zone_name = "privatelink.vaultcore.azure.net"
       vnet_id               = try(module.vnet["cind-claims"].vnet_id, "")
     }
-    openai = {
-      private_dns_zone_name = "privatelink.openai.azure.com"
-      vnet_id               = try(module.vnet["cind-claims"].vnet_id, "")
-    }
+    # openai = {
+    #   private_dns_zone_name = "privatelink.openai.azure.com"
+    #   vnet_id               = try(module.vnet["cind-claims"].vnet_id, "")
+    # }
     # cosmosdb = {
     #   private_dns_zone_name = "privatelink.mongo.cosmos.azure.com"
     #   vnet_id               = try(module.vnet["cind-claims"].vnet_id, "")

@@ -16,7 +16,7 @@ provider "azurerm" {
     }
 
   }
-
+  storage_use_azuread = true
   subscription_id = var.subscription_id
   tenant_id       = var.tenant_id
 
@@ -34,9 +34,13 @@ provider "azuread" {
 
 
 variable "subscription_id" {
-  type = string
+  type        = string
+  description = "Azure subscription ID."
+  default     = "a0b36c09-679f-4dfb-829f-3b6685282dae"
 }
 
 variable "tenant_id" {
-  type = string
+  type        = string
+  description = "Azure tenant ID."
+  default     = "16b3c013-d300-468d-ac64-7eda0820b6d3"
 }
