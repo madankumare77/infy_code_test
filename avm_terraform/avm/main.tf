@@ -571,12 +571,12 @@ locals {
     }
   ]...)
 }
-locals {
-  vnet_ids = merge(
-    { for k, m in module.avm_res_network_virtualnetwork : k => m.resource_id },
-    { for k, d in data.azurerm_virtual_network.existing : k => d.id }
-  )
-}
+# locals {
+#   vnet_ids = merge(
+#     { for k, m in module.avm_res_network_virtualnetwork : k => m.resource_id },
+#     { for k, d in data.azurerm_virtual_network.existing : k => d.id }
+#   )
+# }
 locals {
   created_subnet_ids = merge([
     for vnet_key, vnet_mod in module.avm_res_network_virtualnetwork : {
