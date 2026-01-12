@@ -574,6 +574,7 @@ module "avm-res-network-privateendpoint" {
   network_interface_name = each.value.name
   private_connection_resource_id = each.value.private_connection_resource_id
   subresource_names       = each.value.subresource_names
+  enable_telemetry        = false
 }
 
 #--------------------------------------------------------------------
