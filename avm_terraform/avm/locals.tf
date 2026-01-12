@@ -228,7 +228,7 @@ locals {
       blob_properties = {
         versioning_enabled            = false
         container_delete_retention_policy = {
-          enabled = false
+          enabled = true
           days    = 7
         }
         delete_retention_policy = {
@@ -239,8 +239,7 @@ locals {
       immutability_policy = {
         allow_protected_append_writes = false
         immutability_period_since_creation_in_days = 30
-        state                        = "Locked"
-
+        state                        = "Unlocked"
       }
 
       # network_rules_subnet_refs = [
@@ -381,16 +380,16 @@ locals {
 #--------------------------------------------------------------------
 locals {
   user_assigned_identities = {
-    # function = {
-    #   name                = "infy-claims-function-identity"
-    #   location            = data.azurerm_resource_group.rg.location
-    #   resource_group_name = data.azurerm_resource_group.rg.name
-    # }
-    cosmosdb = {
-      name                = "mannaged_identity_cosdb-cind-claims-test"
+    function = {
+      name                = "infy-claims-function-identity"
       location            = data.azurerm_resource_group.rg.location
       resource_group_name = data.azurerm_resource_group.rg.name
     }
+    # cosmosdb = {
+    #   name                = "mannaged_identity_cosdb-cind-claims-test"
+    #   location            = data.azurerm_resource_group.rg.location
+    #   resource_group_name = data.azurerm_resource_group.rg.name
+    # }
   }
 }
 #--------------------------------------------------------------------
@@ -488,7 +487,7 @@ locals {
 locals {
   cosmosdb_account_configs = {
     cosmosdb1 = {
-      name                = "cosdb003-cind-claims-test"
+      name                = "cosdb004-cind-claims-test"
       location            = data.azurerm_resource_group.rg.location
       resource_group_name = data.azurerm_resource_group.rg.name
       enable_telemetry    = false
@@ -528,7 +527,7 @@ locals {
       ]
       private_endpoints = {
         cosmospe = {
-          name                          = "pvt-endpoint-cosdb003-cind-claims-test"
+          name                          = "pvt-endpoint-cosdb004-cind-claims-test"
           vnet_key                      = "vnet1_manual"
           subnet_key                    = "snet1"
           subresource_name              = "MongoDB"

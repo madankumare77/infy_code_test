@@ -7,7 +7,7 @@ enable_nsg              = false # Creates Network Security Groups (NSGs)
 # ───────────────────────────────────────────────────────────────
 #  STORAGE ACCOUNT
 # ───────────────────────────────────────────────────────────────
-enable_storage_account = false # Creates Storage Accounts (Blob/File/Queue etc.)
+enable_storage_account = true # Creates Storage Accounts (Blob/File/Queue etc.)
 
 # ───────────────────────────────────────────────────────────────
 #  MONITORING
@@ -19,7 +19,7 @@ enable_application_insights             = false # Creates an Application Insight
 #  SECURITY AND IDENTITY
 # ───────────────────────────────────────────────────────────────
 enable_kv                 = false # Creates Azure Key Vault
-enable_user_assigned_identities = false # Creates User Assigned Managed Identity (UAMI)
+enable_user_assigned_identities = true # Creates User Assigned Managed Identity (UAMI)
 
 # ───────────────────────────────────────────────────────────────
 #  APPLICATION PLATFORM RESOURCES

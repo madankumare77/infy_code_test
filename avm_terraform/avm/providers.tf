@@ -16,20 +16,20 @@ terraform {
 
 provider "azurerm" {
   features {}
-  #subscription_id     = "a0b36c09-679f-4dfb-829f-3b6685282dae"
+  subscription_id     = "a0b36c09-679f-4dfb-829f-3b6685282dae"
   storage_use_azuread = true
-  subscription_id = var.subscription_id
-  tenant_id       = var.tenant_id
+  # subscription_id = var.subscription_id
+  # tenant_id       = var.tenant_id
 }
 
 data "azurerm_client_config" "current" {}
 
-variable "subscription_id" {
-  type        = string
-  description = "Azure subscription ID."
-}
+# variable "subscription_id" {
+#   type        = string
+#   description = "Azure subscription ID."
+# }
 
-variable "tenant_id" {
-  type        = string
-  description = "Azure tenant ID."
-}
+# variable "tenant_id" {
+#   type        = string
+#   description = "Azure tenant ID."
+# }
