@@ -11,11 +11,9 @@ permissions:
   deployments: write
 
 env:
-  # Terraform variables (so you don't need -var on the CLI)
   TF_VAR_subscription_id: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
   TF_VAR_tenant_id:       ${{ secrets.AZURE_TENANT_ID }}
 
-  # AzureRM provider / backend OIDC auth
   ARM_USE_OIDC: true
   ARM_CLIENT_ID:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
   ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
@@ -29,6 +27,7 @@ jobs:
       TF_WORKDIR: avm_terraform/avm
 
     steps:
+      # checkout (already present)
       - uses: actions/checkout@v4
 
       - name: Verify TF_WORKDIR exists
@@ -47,10 +46,23 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Terraform fmt (check)
+      # ADD: Setup TFLint
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      # ADD: TFLint init (downloads plugins/rules)
+      - name: TFLint init
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: tflint --init
+
+      # ADD: Run TFLint (lint Terraform code)
+      - name: TFLint (recursive)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: tflint --recursive
+
+      - name: Terraform fmt
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform fmt -recursive
-
 
       - name: Clean terraform cache
         working-directory: ${{ env.TF_WORKDIR }}
@@ -58,11 +70,10 @@ jobs:
           rm -rf .terraform
           rm -f .terraform.lock.hcl
 
-
       - name: Terraform init (AAD backend)
         working-directory: ${{ env.TF_WORKDIR }}
         run: |
-          terraform init -input=false -upgrade\
+          terraform init -input=false -upgrade \
             -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
             -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
             -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
@@ -75,15 +86,13 @@ jobs:
 
       - name: Terraform plan (test)
         working-directory: ${{ env.TF_WORKDIR }}
-        run: |
-          terraform plan -input=false -out=tfplan.bin
+        run: terraform plan -input=false -out=tfplan.bin
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-test
           path: ${{ env.TF_WORKDIR }}/tfplan.bin
-
 
   apply-test:
     runs-on: ubuntu-latest
@@ -93,6 +102,7 @@ jobs:
       TF_WORKDIR: avm_terraform/avm
 
     steps:
+      # checkout (already present)
       - uses: actions/checkout@v4
 
       - name: Azure login (OIDC)
@@ -106,7 +116,19 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Terraform fmt (check)
+      # ADD: Setup TFLint (optional in apply job)
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint init
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: tflint --init
+
+      - name: TFLint (recursive)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: tflint --recursive
+
+      - name: Terraform fmt
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform fmt -recursive
 
