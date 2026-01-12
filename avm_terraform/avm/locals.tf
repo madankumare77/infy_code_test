@@ -488,13 +488,16 @@ locals {
 locals {
   cosmosdb_account_configs = {
     cosmosdb1 = {
-      name                = "cosdb002-cind-claims-test"
+      name                = "cosdb003-cind-claims-test"
       location            = data.azurerm_resource_group.rg.location
       resource_group_name = data.azurerm_resource_group.rg.name
       enable_telemetry    = false
       public_network_access_enabled = false
       minimal_tls_version = "Tls12"
       #user_assigned_identity_keys = ["cosmosdb"]
+      private_endpoint_enabled = true
+      private_endpoint_subnet_key = "snet1"
+      private_endpoint_vnet_key   = "vnet1_manual"
 
       # continuous backup + 30 days tier
       backup = {

@@ -544,6 +544,38 @@ module "avm-res-documentdb-databaseaccount" {
   )
 }
 
+locals {
+  private_endpoint_configs = { 
+    pe_cosmosdb = {
+      name                          = "pe-cosmosdb"
+      subnet_resource_id            = try(local.subnet_ids["vnet1_manual.snet1"], null)
+      private_connection_resource_id = try(module.avm-res-documentdb-databaseaccount["cosmosdb1"].resource_id, null)
+      subresource_names       = ["MongoDB"]
+      private_dns_zone_resource_ids = []
+      location                      = data.azurerm_resource_group.rg.location
+      tags                          = {
+        environment = "test"
+      }
+    }
+  }
+}
+variable "enable_private_endpoints" {
+  type = bool
+  default = true
+}
+module "avm-res-network-privateendpoint" {
+  source  = "Azure/avm-res-network-privateendpoint/azurerm"
+  version = "0.2.0"
+  for_each = { for k, v in local.private_endpoint_configs : k => v if var.enable_private_endpoints }
+  name                 = each.value.name
+  location             = each.value.location
+  resource_group_name  = data.azurerm_resource_group.rg.name
+  subnet_resource_id   = each.value.subnet_resource_id
+  network_interface_name = each.value.name
+  private_connection_resource_id = each.value.private_connection_resource_id
+  subresource_names       = each.value.subresource_names
+}
+
 #--------------------------------------------------------------------
 # Virtual Network Locals to check the condition to create or use existing
 #--------------------------------------------------------------------
