@@ -238,7 +238,7 @@ locals {
       }
       immutability_policy = {
         allow_protected_append_writes = false
-        immutability_period_since_creation_in_days = 30
+        period_since_creation_in_days = 30
         state                        = "Unlocked"
       }
 
