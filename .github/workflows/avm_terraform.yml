@@ -60,6 +60,20 @@ jobs:
         working-directory: ${{ env.TF_WORKDIR }}
         run: tflint --recursive
 
+      # ADD: Setup Checkov
+      - name: Setup Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          skip_check: ""
+        continue-on-error: true
+
+      # ADD: Run Checkov
+      - name: Checkov scan (no fail)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: |
+          checkov -d . --quiet-exit-code --compact || true
+        continue-on-error: true
+
       - name: Terraform fmt
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform fmt -recursive
