@@ -18,7 +18,7 @@ env:
   ARM_CLIENT_ID:       ${{ secrets.TEST_AZURE_CLIENT_ID }}
   ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ secrets.TEST_AZURE_SUBSCRIPTION_ID }}
-  
+
   TF_VAR_storage_account_name: ${{ vars.TF_VAR_storage_account_name }}
   TF_VAR_cosmosdb_account_name: ${{ vars.TF_VAR_cosmosdb_account_name }}
 
@@ -100,6 +100,11 @@ jobs:
       - name: Terraform validate
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform validate
+
+      - name: Debug environment variables
+        run: |
+          echo "Storage Account: $TF_VAR_storage_account_name"
+          echo "Cosmos DB Account: $TF_VAR_cosmosdb_account_name"
 
       - name: Terraform plan (test)
         working-directory: ${{ env.TF_WORKDIR }}
