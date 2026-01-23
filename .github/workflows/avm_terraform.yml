@@ -16,7 +16,8 @@ jobs:
     environment: test
     env:
       TF_WORKDIR: avm_terraform/avm
-
+      ST1_ACCOUNT_NAME: ${{ vars.ST1_ACCOUNT_NAME }}
+      COSMOSDB1_ACCOUNT_NAME: ${{ vars.COSMOSDB1_ACCOUNT_NAME }}
 
     steps:
       # checkout (already present)
@@ -98,7 +99,7 @@ jobs:
 
       - name: Terraform plan (test)
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform plan -input=false -out=tfplan.bin -var "st1_account_name=${{ vars.ST1_ACCOUNT_NAME }}" -var "cosmosdb1_account_name=${{ vars.COSMOSDB1_ACCOUNT_NAME }}"
+        run: terraform plan -input=false -out=tfplan.bin #-var "st1_account_name=${{ vars.ST1_ACCOUNT_NAME }}" -var "cosmosdb1_account_name=${{ vars.COSMOSDB1_ACCOUNT_NAME }}"
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
