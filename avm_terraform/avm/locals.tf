@@ -201,7 +201,7 @@ locals {
   }
 }
 
-variable "storage_account_name" {
+variable "st1_account_name" {
   type = string
 }
 
@@ -211,7 +211,7 @@ variable "storage_account_name" {
 locals {
   storage_account_configs = {
     st1 = {
-      name                              = var.storage_account_name
+      name                              = var.st1_account_name
       resource_group_name               = data.azurerm_resource_group.rg.name
       location                          = data.azurerm_resource_group.rg.location
       account_tier                      = "Standard"
@@ -484,7 +484,7 @@ locals {
   }
 }
 
-variable "cosmosdb_account_name" {
+variable "cosmosdb1_account_name" {
   type = string
 }
 #--------------------------------------------------------------------
@@ -493,7 +493,7 @@ variable "cosmosdb_account_name" {
 locals {
   cosmosdb_account_configs = {
     cosmosdb1 = {
-      name                = var.cosmosdb_account_name
+      name                = var.cosmosdb1_account_name
       location            = data.azurerm_resource_group.rg.location
       resource_group_name = data.azurerm_resource_group.rg.name
       enable_telemetry    = false
