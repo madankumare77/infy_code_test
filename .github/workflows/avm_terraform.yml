@@ -98,7 +98,7 @@ jobs:
 
       - name: Terraform plan (test)
         working-directory: ${{ env.TF_WORKDIR }}
-        run: terraform plan -input=false -out=tfplan.bin -var "st1_account_name=${{ secrets.ST1_ACCOUNT_NAME }}" -var "cosmosdb1_account_name=${{ secrets.COSMOSDB1_ACCOUNT_NAME }}"
+        run: terraform plan -input=false -out=tfplan.bin -var "st1_account_name=${{ vars.ST1_ACCOUNT_NAME }}" -var "cosmosdb1_account_name=${{ vars.COSMOSDB1_ACCOUNT_NAME }}"
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
