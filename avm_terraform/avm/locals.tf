@@ -211,7 +211,7 @@ variable "st1_account_name" {
 locals {
   storage_account_configs = {
     st1 = {
-      name                              = var.st1_account_name
+      name                              = "st0003testinfy"
       resource_group_name               = data.azurerm_resource_group.rg.name
       location                          = data.azurerm_resource_group.rg.location
       account_tier                      = "Standard"
@@ -493,7 +493,7 @@ variable "cosmosdb1_account_name" {
 locals {
   cosmosdb_account_configs = {
     cosmosdb1 = {
-      name                = var.cosmosdb1_account_name
+      name                = "comsosdb004-cind-claims-test"
       location            = data.azurerm_resource_group.rg.location
       resource_group_name = data.azurerm_resource_group.rg.name
       enable_telemetry    = false
