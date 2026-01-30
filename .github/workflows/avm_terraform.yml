@@ -10,9 +10,13 @@ permissions:
   actions: read
   deployments: write
 
+# jobs:
+#   build-and-test:
+#     runs-on: arc-runner-set
+
 jobs:
   plan-test:
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     environment: test
     env:
       TF_WORKDIR: avm_terraform/avm
@@ -57,11 +61,11 @@ jobs:
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform fmt -recursive
 
-      - name: Clean terraform cache
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: |
-          rm -rf .terraform
-          rm -f .terraform.lock.hcl
+      # - name: Clean terraform cache
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: |
+      #     rm -rf .terraform
+      #     rm -f .terraform.lock.hcl
 
       - name: Terraform init (AAD backend)
         working-directory: ${{ env.TF_WORKDIR }}
