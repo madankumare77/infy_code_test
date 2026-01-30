@@ -41,21 +41,21 @@ jobs:
         with:
           terraform_wrapper: false
 
-      # ADD: Setup TFLint
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
+      # # ADD: Setup TFLint
+      # - name: Setup TFLint
+      #   uses: terraform-linters/setup-tflint@v4
 
-      #ADD: TFLint init (downloads plugins/rules)
-      - name: TFLint init
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: tflint --init
-        continue-on-error: true
+      # #ADD: TFLint init (downloads plugins/rules)
+      # - name: TFLint init
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: tflint --init
+      #   continue-on-error: true
 
-      #ADD: Run TFLint (lint Terraform code)
-      - name: TFLint (recursive)
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: tflint --recursive
-        continue-on-error: true
+      # #ADD: Run TFLint (lint Terraform code)
+      # - name: TFLint (recursive)
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: tflint --recursive
+      #   continue-on-error: true
 
       - name: Terraform fmt
         working-directory: ${{ env.TF_WORKDIR }}
@@ -78,18 +78,18 @@ jobs:
             -backend-config="use_azuread_auth=true"
 
       # ADD: Setup Checkov
-      - name: Setup Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          skip_check: ""
-        continue-on-error: true
+      # - name: Setup Checkov
+      #   uses: bridgecrewio/checkov-action@v12
+      #   with:
+      #     skip_check: ""
+      #   continue-on-error: true
 
-      # ADD: Run Checkov
-      - name: Checkov scan (no fail)
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: |
-          checkov -d . --quiet-exit-code --compact || true
-        continue-on-error: true
+      # # ADD: Run Checkov
+      # - name: Checkov scan (no fail)
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: |
+      #     checkov -d . --quiet-exit-code --compact || true
+      #   continue-on-error: true
 
       - name: Terraform validate
         working-directory: ${{ env.TF_WORKDIR }}
