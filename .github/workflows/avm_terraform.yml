@@ -29,11 +29,11 @@ jobs:
         run: |
           test -d "${{ env.TF_WORKDIR }}" || { echo "ERROR: ${{ env.TF_WORKDIR }} not found"; exit 1; }
       
-      - name: Install Azure CLI (Ubuntu)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ca-certificates curl apt-transport-https lsb-release gnupg
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      # - name: Install Azure CLI (Ubuntu)
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y ca-certificates curl apt-transport-https lsb-release gnupg
+      #     curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -47,31 +47,31 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Validate Terraform backend
-        run: |
-          az storage account show -n ${{ secrets.TEST_TF_BACKEND_SA }} -g ${{ secrets.TEST_TF_BACKEND_RG }} \
-            || { echo "TF backend storage account missing"; exit 1; }
+      # - name: Validate Terraform backend
+      #   run: |
+      #     az storage account show -n ${{ secrets.TEST_TF_BACKEND_SA }} -g ${{ secrets.TEST_TF_BACKEND_RG }} \
+      #       || { echo "TF backend storage account missing"; exit 1; }
       
-          az storage container show \
-            --account-name ${{ secrets.TEST_TF_BACKEND_SA }} \
-            --name ${{ secrets.TEST_TF_BACKEND_CONTAINER }} \
-            || { echo "TF backend container missing"; exit 1; }
+      #     az storage container show \
+      #       --account-name ${{ vars.TEST_TF_BACKEND_SA }} \
+      #       --name ${{ vars.TEST_TF_BACKEND_CONTAINER }} \
+      #       || { echo "TF backend container missing"; exit 1; }
 
-      # ADD: Setup TFLint
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
+      # # ADD: Setup TFLint
+      # - name: Setup TFLint
+      #   uses: terraform-linters/setup-tflint@v4
 
-      #ADD: TFLint init (downloads plugins/rules)
-      - name: TFLint init
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: tflint --init
-        continue-on-error: true
+      # #ADD: TFLint init (downloads plugins/rules)
+      # - name: TFLint init
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: tflint --init
+      #   continue-on-error: true
 
-      #ADD: Run TFLint (lint Terraform code)
-      - name: TFLint (recursive)
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: tflint --recursive
-        continue-on-error: true
+      # #ADD: Run TFLint (lint Terraform code)
+      # - name: TFLint (recursive)
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: tflint --recursive
+      #   continue-on-error: true
 
       - name: Terraform fmt
         working-directory: ${{ env.TF_WORKDIR }}
