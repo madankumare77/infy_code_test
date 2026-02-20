@@ -1,7 +1,7 @@
 
 
 data "azurerm_resource_group" "rg" {
-  name = "madan-test"
+  name = "rg-infosys-is"  #"madan-test"
 }
 #--------------------------------------------------------------------
 # Virtual Network and Subnet
@@ -105,6 +105,7 @@ module "keyvault" {
   location                        = each.value.location
   resource_group_name             = each.value.resource_group_name
   tenant_id                       = data.azurerm_client_config.current.tenant_id
+  sku_name                        = each.value.sku_name
   soft_delete_retention_days      = each.value.soft_delete_retention_days
   purge_protection_enabled        = each.value.purge_protection_enabled
   legacy_access_policies_enabled  = each.value.legacy_access_policies_enabled
@@ -149,10 +150,13 @@ module "keyvault" {
     ? null
     : { for k, v in each.value.tags : k => tostring(v) }
   )
+  depends_on = [module.law]
 
 }
 
-
+#--------------------------------------------------------------------
+# Log Analytics Workspace
+#--------------------------------------------------------------------
 module "law" {
   source                                    = "Azure/avm-res-operationalinsights-workspace/azurerm"
   count                                     = var.enable_log_analytics_workspace ? 1 : 0
@@ -261,7 +265,7 @@ module "avm-res-storage-storageaccount" {
     ? null
     : { for k, v in each.value.tags : k => tostring(v) }
   )
-
+  depends_on = [module.law]
 }
 
 #--------------------------------------------------------------------
@@ -473,6 +477,7 @@ module "avm-res-cognitiveservices-account" {
     ? null
     : { for k, v in each.value.tags : k => tostring(v) }
   )
+  depends_on = [module.law]
 }
 #--------------------------------------------------------------------
 # Cosmos DB Account configuration
@@ -493,7 +498,7 @@ module "avm-res-documentdb-databaseaccount" {
   mongo_databases      = try(each.value.mongo_databases, {})
   mongo_server_version = try(each.value.mongo_server_version, null)
   geo_locations = try(each.value.geo_locations, null)
-  private_endpoints_manage_dns_zone_group = false
+  private_endpoints_manage_dns_zone_group = try(each.value.private_endpoints_manage_dns_zone_group, false)
 
   consistency_policy = {
     consistency_level = "Session"
@@ -543,6 +548,7 @@ module "avm-res-documentdb-databaseaccount" {
     ? null
     : { for k, v in each.value.tags : k => tostring(v) }
   )
+  depends_on = [module.law]
 }
 
 #--------------------------------------------------------------------
@@ -572,12 +578,12 @@ locals {
     }
   ]...)
 }
-# locals {
-#   vnet_ids = merge(
-#     { for k, m in module.avm_res_network_virtualnetwork : k => m.resource_id },
-#     { for k, d in data.azurerm_virtual_network.existing : k => d.id }
-#   )
-# }
+locals {
+  vnet_ids = merge(
+    { for k, m in module.avm_res_network_virtualnetwork : k => m.resource_id },
+    { for k, d in data.azurerm_virtual_network.existing : k => d.id }
+  )
+}
 locals {
   created_subnet_ids = merge([
     for vnet_key, vnet_mod in module.avm_res_network_virtualnetwork : {
@@ -642,6 +648,23 @@ locals {
   )
 }
 #--------------------------------------------------------------------
+# rbac Role Assignment
+#--------------------------------------------------------------------
+module "avm-res-authorization-roleassignment" {
+  source  = "Azure/avm-res-authorization-roleassignment/azurerm"
+  version = "0.3.0"
+  count = var.enable_role_assignments ? 1 : 0
+  role_assignments_azure_resource_manager = {
+    user_identity_function_stoage = {
+      scope                = try(module.avm-res-storage-storageaccount["st1"].resource_id, null)
+      role_definition_name = "Storage Blob Data Contributor"
+      principal_id         = try(module.avm-res-managedidentity-userassignedidentity["function"].principal_id, null)
+    }
+  }
+  enable_telemetry = false
+}
+
+#--------------------------------------------------------------------
 # Private Endpoint
 #--------------------------------------------------------------------
 locals {
@@ -659,10 +682,6 @@ locals {
     }
   }
 }
-variable "enable_private_endpoints" {
-  type = bool
-  default = false
-}
 module "avm-res-network-privateendpoint" {
   source  = "Azure/avm-res-network-privateendpoint/azurerm"
   version = "0.2.0"
@@ -675,4 +694,28 @@ module "avm-res-network-privateendpoint" {
   private_connection_resource_id = each.value.private_connection_resource_id
   subresource_names       = each.value.subresource_names
   enable_telemetry        = false
+}
+
+#--------------------------------------------------------------------
+# Private DNS zone avm module to create and data block to use existing.
+#--------------------------------------------------------------------
+module "avm-res-network-privatednszone" {
+  source  = "Azure/avm-res-network-privatednszone/azurerm"
+  version = "0.4.4"
+  for_each = {for k, v in local.private_dns_zones : k => v if var.enable_private_dns_zone && v.create_private_dns_zone }
+  enable_telemetry      = false
+  domain_name = each.value.private_dns_zone_name
+  parent_id = data.azurerm_resource_group.rg.id
+  virtual_network_links = {
+    vnet_link = {
+      name                  = "${each.value.private_dns_zone_name}-vnetlink"
+      virtual_network_id    = each.value.vnet_id
+      registration_enabled  = false
+    }
+  }
+}
+data "azurerm_private_dns_zone" "existing" {
+  for_each = {for k, v in local.private_dns_zones : k => v if var.enable_private_dns_zone && !v.create_private_dns_zone }
+  name                = each.value.private_dns_zone_name
+  resource_group_name = each.value.resource_group_name
 }
