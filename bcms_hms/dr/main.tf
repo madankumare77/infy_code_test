@@ -1,24 +1,48 @@
-data "azurerm_resource_group" "rg" {
-  name = "rg-infy-terraform"
+data "azurerm_resource_group" "rg_aks" {
+  name = "rg-sind-isaksbcmsdrmgmt"   #contributor
 }
-# data "azurerm_resource_group" "rg_dr" {
-#   name = "rg-node-terraform"
-# }
-
-# data "azurerm_resource_group" "rg" {
-#   name = "rg-infosys-is"
-# }
-
-# data "azurerm_resource_group" "rg_dr" {
-#   name = "rg-infosys-is-dr"
-# }
-
-
-# data "azuread_group" "ad_group" {
-# display_name   = "infy-test"
-# security_enabled = true
-# }
-
+ 
+data "azurerm_resource_group" "rg_pass" {
+  name = "rg-sind-paas-dr-prod"     #contributor
+}
+ 
+data "azurerm_resource_group" "rg_sqlmi_dr" {
+  name = "dbs-sind-mi-dr-mgmt"     #contributor
+}
+ 
+data "azurerm_resource_group" "rg_sqlmi_primary" {
+  name = "rg-cind-paas-db-test"     #reader
+}
+ 
+data "azurerm_storage_account" "dr_aks_diag" {
+  name                = "stsinakslogstest"
+  resource_group_name = "rg-sind-ismgmt"      #reader
+}
+ 
+data "azurerm_mssql_managed_instance" "sqlmi_primary" {
+  name                = "db-cind-mi-intranet-test"
+  resource_group_name = data.azurerm_resource_group.rg_sqlmi_primary.name
+}
+ 
+data "azuread_group" "ad_group" {
+display_name   = "ISEPM-AKS-ADMINS"
+security_enabled = true             #Directory reader
+}
+ 
+module "law" {
+  source                                    = "Azure/avm-res-operationalinsights-workspace/azurerm"
+  version                                   = "0.4.2"
+  name                                      = "IL-InformationSystems-sind-dr"
+  location                                  = data.azurerm_resource_group.rg.location
+  resource_group_name                       = data.azurerm_resource_group.rg.name
+  log_analytics_workspace_sku               = "PerGB2018"
+  log_analytics_workspace_retention_in_days = 30
+  enable_telemetry                          = false
+  tags = {
+    created_by = "terraform"
+  }
+}
+ 
 #--------------------------------------------------------------------
 # Virtual Network and Subnet
 #--------------------------------------------------------------------
@@ -27,13 +51,13 @@ module "avm_res_network_virtualnetwork" {
   version  = "0.16.0"
   for_each = { for k, v in local.vnets_to_create : k => v }
   #for_each = local.vnets_to_create
-
+ 
   name      = each.value.name
   location  = each.value.location
   parent_id = try(each.value.parent_id, data.azurerm_resource_group.rg.id)
-
+ 
   address_space = each.value.address_space
-
+ 
   enable_telemetry = false
   dns_servers      = (try(each.value.dns_servers, null) == null ? null : { dns_servers = each.value.dns_servers })
   # --- Transform your subnet_configs -> module.subnets expected shape ---
@@ -48,10 +72,10 @@ module "avm_res_network_virtualnetwork" {
           # locations = [each.value.location] # use only if you want location restriction
         }
       ]
-
+ 
       network_security_group = try((try(s.nsg_key, null) == null ? null : { id = local.nsg_ids[s.nsg_key] }), null)
       route_table = try(s.route_table, null)
-
+ 
       # If delegation exists, create list; else empty
       delegations = try([
         {
@@ -70,7 +94,7 @@ module "avm_res_network_virtualnetwork" {
     : { for k, v in each.value.tags : k => tostring(v) }
   )
 }
-
+ 
 data "azurerm_virtual_network" "existing" {
   for_each            = { for k, v in local.vnets_existing : k => v }
   name                = each.value.name
@@ -82,7 +106,7 @@ data "azurerm_subnet" "existing" {
   resource_group_name  = each.value.rg_name
   virtual_network_name = data.azurerm_virtual_network.existing[each.value.vnet_key].name
 }
-
+ 
 #--------------------------------------------------------------------
 # Network Security Group
 #--------------------------------------------------------------------
@@ -107,7 +131,7 @@ data "azurerm_network_security_group" "existing" {
   name                = each.value.nsg_name
   resource_group_name = coalesce(try(each.value.rg_name, null), data.azurerm_resource_group.rg.name)
 }
-
+ 
 module "avm-res-network-routetable" {
   source  = "Azure/avm-res-network-routetable/azurerm"
   for_each = { for k, v in local.route_table_configs : k => v }
@@ -117,7 +141,7 @@ module "avm-res-network-routetable" {
   resource_group_name = each.value.resource_group_name
   enable_telemetry    = false
 }
-
+ 
 module "avm-res-managedidentity-userassignedidentity" {
   source              = "Azure/avm-res-managedidentity-userassignedidentity/azurerm"
   version             = "0.3.4"
@@ -132,85 +156,12 @@ module "avm-res-managedidentity-userassignedidentity" {
     : { for k, v in each.value.tags : k => tostring(v) }
   )
 }
-
-
-#This is the module call
-module "sqlmi_primary" {
-  source = "Azure/avm-res-sql-managedinstance/azurerm"
-  version = "0.1.3"
-  for_each = { for k, v in local.sqlmi-configs : k => v }
-
-  name                         = each.value.name
-  location                     = each.value.location
-  administrator_login          = each.value.administrator_login
-  administrator_login_password = each.value.administrator_login_password
-  resource_group_name          = each.value.resource_group_name
-  sku_name                     = each.value.sku_name
-  vcores                       = each.value.vcores
-  storage_size_in_gb           = each.value.storage_size_in_gb
-  license_type                 = each.value.license_type
-  timezone_id                  = each.value.timezone_id
-  proxy_override               = each.value.proxy_override
-  public_data_endpoint_enabled = each.value.public_data_endpoint_enabled
-  subnet_id                    = each.value.subnet_id
-  minimum_tls_version          = each.value.minimum_tls_version
-  zone_redundant_enabled = each.value.zone_redundant_enabled
-  storage_account_type = "GRS"
-  enable_telemetry    = false
-  dns_zone_partner_id = try(each.value.dns_zone_partner_id, null)
-
-  managed_identities = {
-    user_assigned_resource_ids = toset([
-      for id_key in try(each.value.user_assigned_identity_keys, []) :
-      module.avm-res-managedidentity-userassignedidentity[id_key].resource_id
-    ])
-  }
-
-  active_directory_administrator = (
-    try(each.value.active_directory_administrator, null) == null
-    ? null
-    : {
-        azuread_authentication_only = each.value.active_directory_administrator.azuread_authentication_only
-        object_id                   = each.value.active_directory_administrator.object_id
-        tenant_id                   = each.value.active_directory_administrator.tenant_id
-        login_username              = each.value.active_directory_administrator.login_username
-      }
-  )
-
-  private_endpoints_manage_dns_zone_group = try(each.value.private_endpoints_manage_dns_zone_group, false)
-  private_endpoints = {
-    for pe_key, pe in try(each.value.private_endpoints, {}) : pe_key => {
-      name                          = try(pe.name, null)
-      subnet_resource_id            = local.subnet_ids["${pe.vnet_key}.${pe.subnet_key}"]
-      subresource_name              = pe.subresource_name
-      private_dns_zone_resource_ids = try(pe.private_dns_zone_resource_ids, [])
-      tags                          = try(pe.tags, null)
-    }
-  }
-
-  diagnostic_settings = (
-    contains(keys(each.value), "diagnostic_settings") && length(each.value.diagnostic_settings) > 0
-    ? {
-      for diag_k, diag in each.value.diagnostic_settings :
-      diag_k => {
-        name                  = try(diag.name, null)
-        workspace_resource_id = try(diag.workspace_resource_id, null)
-        log_analytics_destination_type = "AzureDiagnostics"
-      }
-    }
-    : null
-  )
-
-  depends_on = [
-    module.avm-res-managedidentity-userassignedidentity, module.nsg
-  ]
-}
-
-module "sqlmi_secondary" {
+ 
+module "sqlmi_dr" {
   source = "Azure/avm-res-sql-managedinstance/azurerm"
   version = "0.1.3"
   for_each = { for k, v in local.sqlmi-configs-secondary : k => v }
-
+ 
   name                         = each.value.name
   location                     = each.value.location
   administrator_login          = each.value.administrator_login
@@ -226,17 +177,17 @@ module "sqlmi_secondary" {
   subnet_id                    = each.value.subnet_id
   minimum_tls_version          = each.value.minimum_tls_version
   zone_redundant_enabled = each.value.zone_redundant_enabled
-  storage_account_type = "GRS"
+  storage_account_type = each.value.storage_account_type
   enable_telemetry    = false
   dns_zone_partner_id = try(each.value.dns_zone_partner_id, null)
-
+ 
   managed_identities = {
     user_assigned_resource_ids = toset([
       for id_key in try(each.value.user_assigned_identity_keys, []) :
       module.avm-res-managedidentity-userassignedidentity[id_key].resource_id
     ])
   }
-
+ 
   active_directory_administrator = (
     try(each.value.active_directory_administrator, null) == null
     ? null
@@ -247,7 +198,7 @@ module "sqlmi_secondary" {
         login_username              = each.value.active_directory_administrator.login_username
       }
   )
-
+ 
   private_endpoints_manage_dns_zone_group = try(each.value.private_endpoints_manage_dns_zone_group, false)
   private_endpoints = {
     for pe_key, pe in try(each.value.private_endpoints, {}) : pe_key => {
@@ -258,7 +209,7 @@ module "sqlmi_secondary" {
       tags                          = try(pe.tags, null)
     }
   }
-
+ 
   diagnostic_settings = (
     contains(keys(each.value), "diagnostic_settings") && length(each.value.diagnostic_settings) > 0
     ? {
@@ -271,52 +222,52 @@ module "sqlmi_secondary" {
     }
     : null
   )
-
+ 
   depends_on = [
-    module.avm-res-managedidentity-userassignedidentity, module.nsg, module.sqlmi_primary, module.avm_res_network_virtualnetwork
+    module.nsg, module.avm_res_network_virtualnetwork
   ]
 }
-
-
-#Peering primary <-> DR VNets
+ 
+ 
+# #Peering primary <-> DR VNets
 # resource "azurerm_virtual_network_peering" "primary_to_dr" {
 #   name                      = "peer-primary-to-dr"
 #   resource_group_name       = data.azurerm_resource_group.rg.name
-#   virtual_network_name      = module.avm_res_network_virtualnetwork["vnet-primary"].name
+#   virtual_network_name      = module.avm_res_network_virtualnetwork["vnet-primary"].name     #data.azurerm_virtual_network.existing["vnet1_manual"].name
 #   remote_virtual_network_id = module.avm_res_network_virtualnetwork["vnet-dr"].resource_id
 #   allow_virtual_network_access = true
 #   allow_forwarded_traffic      = true
 #   use_remote_gateways          = false
 #   depends_on = [module.avm_res_network_virtualnetwork]
 # }
-
+ 
 # resource "azurerm_virtual_network_peering" "dr_to_primary" {
 #   name                      = "peer-dr-to-primary"
 #   resource_group_name       = data.azurerm_resource_group.rg_dr.name
 #   virtual_network_name      = module.avm_res_network_virtualnetwork["vnet-dr"].name
-#   remote_virtual_network_id = module.avm_res_network_virtualnetwork["vnet-primary"].resource_id
+#   remote_virtual_network_id = module.avm_res_network_virtualnetwork["vnet-primary"].resource_id  #data.azurerm_virtual_network.existing["vnet1_manual"].id
 #   allow_virtual_network_access = true
 #   allow_forwarded_traffic      = true
 #   use_remote_gateways          = false
 #   depends_on = [module.avm_res_network_virtualnetwork]
 # }
-
-
+ 
+ 
 # resource "azurerm_mssql_managed_instance_failover_group" "example" {
-#   name                        = "sqlmi-infy-failover-group"
-#   location                    = data.azurerm_resource_group.rg.location
-#   managed_instance_id         = module.sqlmi_primary["sqlmi_primary"].resource_id
-#   partner_managed_instance_id = module.sqlmi_secondary["sqlmi_dr"].resource_id
+#   name                        = "dbs-sind-mi-dr-mgmt"
+#   location                    = data.azurerm_resource_group.rg_sqlmi_primary.location
+#   managed_instance_id         = data.azurerm_mssql_managed_instance.sqlmi_primary.id
+#   partner_managed_instance_id = module.sqlmi_dr["sqlmi_dr"].resource_id
 #   secondary_type              = "Geo"
 #   read_write_endpoint_failover_policy {
 #     mode          = "Automatic"
 #     grace_minutes = 60
 #   }
-#   depends_on = [ module.nsg ]
+#   depends_on = [ module.nsg, module.sqlmi_dr ]
 # }
-
-
-
+ 
+ 
+ 
 # --------------------------------------------------------------------
 # AKS
 # --------------------------------------------------------------------
@@ -324,30 +275,29 @@ module "sqlmi_secondary" {
 # 1: dns_prefix_private_cluster required private_dns_zone_id
 # 2: if local_account_disabled true then role_based_access_control_enabled must be true and it required azure_active_directory_role_based_access_control
 # 3: api_server_access_profile required then subnet is not allowed to be same with agent node subnet
-
+ 
 module "avm-res-containerservice-managedcluster" {
   source  = "Azure/avm-res-containerservice-managedcluster/azurerm"
   version = "0.3.3"
   for_each = { for k, v in local.aks_configs : k => v }
-
+ 
   name                       = each.value.name
   location                   = data.azurerm_resource_group.rg.location
   resource_group_name        = each.value.resource_group_name
+  node_resource_group_name   = try(each.value.node_resource_group_name, null) # if null, module will create one with name "${each.value.name}-node-rg"
   kubernetes_version         = each.value.kubernetes_version # optional; omit to use default
   sku_tier                   = each.value.sku_tier   # "Free" | "Standard" (AKS Uptime SLA)
   enable_telemetry           = false    
   oidc_issuer_enabled        = each.value.oidc_issuer_enabled
   workload_identity_enabled  = each.value.workload_identity_enabled
   azure_policy_enabled       = each.value.azure_policy_enabled
-
-  private_cluster_enabled    = each.value.private_cluster_enabled                    # force replacement of the cluster if changed
+  private_cluster_enabled    = each.value.private_cluster_enabled
   #dns_prefix_private_cluster = "dr-aks-03"
-  #private_dns_zone_id        = local.private_dns_ids["aks"] 
+  #private_dns_zone_id        = local.private_dns_ids["aks"]
   dns_prefix = each.value.dns_prefix
-
+ 
   local_account_disabled = each.value.local_account_disabled
   role_based_access_control_enabled = each.value.role_based_access_control_enabled #Enabling Azure Active Directory integration requires that `role_based_access_control_enabled` be set to true."
-  
   azure_active_directory_role_based_access_control = (
     try(each.value.azure_active_directory_role_based_access_control, null) == null
     ? null
@@ -356,9 +306,8 @@ module "avm-res-containerservice-managedcluster" {
         admin_group_object_ids = each.value.azure_active_directory_role_based_access_control.admin_group_object_ids
         azure_rbac_enabled = each.value.azure_active_directory_role_based_access_control.azure_rbac_enabled
       }
-  ) 
-  
-
+  )
+ 
   network_profile = {
     network_plugin      = each.value.network_profile.network_plugin      # "azure" (CNI) or "kubenet"
     network_policy      = each.value.network_profile.network_policy      # "azure" | "calico" (depends on plugin/region)
@@ -369,7 +318,7 @@ module "avm-res-containerservice-managedcluster" {
     outbound_type     = each.value.network_profile.outbound_type # "loadBalancer" | "userDefinedRouting" | "managedNATGateway" | "userAssignedNATGateway"
     load_balancer_sku = each.value.network_profile.load_balancer_sku     # "Basic" | "standard"
   }
-
+ 
   default_node_pool = {
     name            = each.value.default_node_pool.name
     vm_size         = each.value.default_node_pool.vm_size
@@ -414,11 +363,10 @@ module "avm-res-containerservice-managedcluster" {
       ? null
       : { for k, v in each.value.default_node_pool.node_labels : k => tostring(v) }
     )
-    node_taints = try(each.value.default_node_pool.node_taints, []) # e.g., ["CriticalAddonsOnly=true:NoSchedule"]
+    node_taints = [] # e.g., ["CriticalAddonsOnly=true:NoSchedule"]
   }
-
+ 
   # Additional user pools (Portal: Node pools → Add node pool)
-  node_resource_group_name = try(each.value.node_resource_group_name, null) # if not specified, node RG will be named MC_<RG>_<clusterName>_<location>
   node_pools = {
     for np_key, np_value in try(each.value.node_pools, {}) : np_key => {
       name    = np_value.name
@@ -439,7 +387,7 @@ module "avm-res-containerservice-managedcluster" {
         : { for k, v in np_value.node_labels : k => tostring(v) }
       )
       node_taints          = try(np_value.node_taints, [])
-      zones                = try(np_value.zones, null)
+      zones                = np_value.zones
       upgrade_settings = {
         drain_timeout_in_minutes      = 0
         node_soak_duration_in_minutes = 0
@@ -447,14 +395,14 @@ module "avm-res-containerservice-managedcluster" {
       }
     }
   }
-
+ 
   managed_identities = {
     user_assigned_resource_ids = toset([
       for id_key in try(each.value.user_assigned_identity_keys, []) :
       module.avm-res-managedidentity-userassignedidentity[id_key].resource_id
     ])
   }
-
+ 
   diagnostic_settings = (
     contains(keys(each.value), "diagnostic_settings") && length(each.value.diagnostic_settings) > 0
     ? {
@@ -463,6 +411,7 @@ module "avm-res-containerservice-managedcluster" {
         name                  = try(diag.name, null)
         workspace_resource_id = try(diag.workspace_resource_id, null)
         log_analytics_destination_type = "AzureDiagnostics"
+        storage_account_resource_id = try(diag.storage_account_resource_id, null)
       }
     }
     : null
@@ -471,20 +420,20 @@ module "avm-res-containerservice-managedcluster" {
   service_mesh_profile = (
     try(each.value.service_mesh_profile, null) == null
     ? null
-    : { 
+    : {
         mode = each.value.service_mesh_profile.mode
         revisions = each.value.service_mesh_profile.revisions
         external_ingress_gateway_enabled = each.value.service_mesh_profile.external_ingress_gateway_enabled
         internal_ingress_gateway_enabled = each.value.service_mesh_profile.internal_ingress_gateway_enabled
      }
   )
-
+ 
   tags = (
     try(each.value.tags, null) == null
     ? null
     : { for k, v in each.value.tags : k => tostring(v) }
   )
-
+ 
   # API server access (Basics → API server)
   # api_server_access_profile = {
   #   authorized_ip_ranges = [ # Only for Public clusters
@@ -493,4 +442,239 @@ module "avm-res-containerservice-managedcluster" {
   #   subnet_id                           = data.azurerm_subnet.existing["vnet1_manual:snet1"].id # Required if enable_vnet_integration=true
   #   virtual_network_integration_enabled = true
   # }
+}
+ 
+ 
+#--------------------------------------------------------------------
+# #Storage Account
+#--------------------------------------------------------------------
+module "avm-res-storage-storageaccount" {
+  source                            = "Azure/avm-res-storage-storageaccount/azurerm"
+  for_each                          = { for k, v in local.storage_account_configs : k => v }
+  version                           = "0.6.7"
+  account_replication_type          = each.value.account_replication_type
+  account_tier                      = each.value.account_tier
+  location                          = each.value.location
+  name                              = each.value.name
+  resource_group_name               = each.value.resource_group_name
+  access_tier                       = each.value.access_tier
+  account_kind                      = each.value.account_kind
+  allow_nested_items_to_be_public   = each.value.allow_nested_items_to_be_public
+  default_to_oauth_authentication   = each.value.default_to_oauth_authentication
+  https_traffic_only_enabled        = each.value.https_traffic_only_enabled
+  infrastructure_encryption_enabled = each.value.infrastructure_encryption_enabled
+  enable_telemetry                  = each.value.enable_telemetry
+  local_user_enabled                = each.value.local_user_enabled
+  min_tls_version                   = each.value.min_tls_version
+  public_network_access_enabled     = each.value.public_network_access_enabled
+  sftp_enabled                      = each.value.sftp_enabled
+  shared_access_key_enabled         = each.value.shared_access_key_enabled
+  network_rules = (
+    length(try(each.value.network_rules_subnet_refs, [])) == 0
+    ? null
+    : {
+      # optional - you can add default_action/bypass here if your module expects it
+      virtual_network_subnet_ids = [
+        for r in each.value.network_rules_subnet_refs :
+        local.subnet_ids["${r.vnet_key}.${r.subnet_key}"]
+      ]
+    }
+  )
+ 
+  private_endpoints = {
+    for pe_key, pe in try(each.value.private_endpoints, {}) : pe_key => {
+      name                          = try(pe.name, null)
+      subnet_resource_id            = local.subnet_ids["${pe.vnet_key}.${pe.subnet_key}"]
+      subresource_name              = pe.subresource_name
+      private_dns_zone_resource_ids = try(pe.private_dns_zone_resource_ids, [])
+      tags                          = try(pe.tags, null)
+    }
+  }
+  blob_properties = (
+    try(each.value.blob_properties, null) == null
+    ? null
+    : {
+      change_feed_enabled           = try(each.value.blob_properties.change_feed_enabled, null)
+      change_feed_retention_in_days = try(each.value.blob_properties.change_feed_retention_in_days, null)
+      default_service_version       = try(each.value.blob_properties.default_service_version, null)
+      last_access_time_enabled      = try(each.value.blob_properties.last_access_time_enabled, null)
+      versioning_enabled            = try(each.value.blob_properties.versioning_enabled, null)
+ 
+      delete_retention_policy = (try(each.value.blob_properties.delete_retention_policy, null) == null ? null : {
+        days = each.value.blob_properties.delete_retention_policy.days
+        permanent_delete_enabled = each.value.blob_properties.delete_retention_policy.permanent_delete_enabled
+      })
+      container_delete_retention_policy = (try(each.value.blob_properties.container_delete_retention_policy, null) == null ? null : {
+        days = each.value.blob_properties.container_delete_retention_policy.days
+        #enabled = each.value.blob_properties.container_delete_retention_policy.enabled
+      })
+    }
+  )
+ 
+  immutability_policy = (
+    try(each.value.immutability_policy, null) == null
+    ? null
+    : {
+      state         = each.value.immutability_policy.state
+      period_since_creation_in_days = each.value.immutability_policy.period_since_creation_in_days
+      allow_protected_append_writes = each.value.immutability_policy.allow_protected_append_writes
+    }
+  )
+ 
+  diagnostic_settings_blob = (
+    contains(keys(each.value), "diagnostic_settings_blob") && length(each.value.diagnostic_settings_blob) > 0
+    ? {
+      for diag_k, diag in each.value.diagnostic_settings_blob :
+      diag_k => {
+        name                  = try(diag.name, null)
+        workspace_resource_id = try(diag.workspace_resource_id, null)
+        metric_categories     = try(toset(diag.metric_categories), null)
+      }
+    }
+    : null
+  )
+  tags = (
+    try(each.value.tags, null) == null
+    ? null
+    : { for k, v in each.value.tags : k => tostring(v) }
+  )
+  depends_on = [module.law]
+}
+ 
+#--------------------------------------------------------------------
+#Key Vault
+#--------------------------------------------------------------------
+module "keyvault" {
+  source   = "Azure/avm-res-keyvault-vault/azurerm"
+  version  = "0.10.2"
+  for_each = { for k, v in local.keyvault_configs : k => v }
+ 
+  name                            = each.value.name
+  location                        = each.value.location
+  resource_group_name             = each.value.resource_group_name
+  tenant_id                       = data.azurerm_client_config.current.tenant_id
+  sku_name                        = each.value.sku_name
+  soft_delete_retention_days      = each.value.soft_delete_retention_days
+  purge_protection_enabled        = each.value.purge_protection_enabled
+  legacy_access_policies_enabled  = each.value.legacy_access_policies_enabled
+  enabled_for_deployment          = each.value.enabled_for_deployment
+  enabled_for_disk_encryption     = each.value.enabled_for_disk_encryption
+  enabled_for_template_deployment = each.value.enabled_for_template_deployment
+  public_network_access_enabled   = each.value.public_network_access_enabled
+  enable_telemetry                = false
+  # ---- network ACLs: convert vnet/subnet refs -> subnet IDs ----
+  network_acls = merge(
+    try(each.value.network_acls, {}),
+    {
+      virtual_network_subnet_ids = [
+        for r in try(each.value.network_acls.virtual_network_subnet_refs, []) :
+        local.subnet_ids["${r.vnet_key}.${r.subnet_key}"]
+      ]
+    }
+  )
+  # ---- private endpoints: derive subnet_resource_id from vnet1.snet1 etc ----
+  private_endpoints = {
+    for pe_key, pe in try(each.value.private_endpoints, {}) : pe_key => {
+      name                          = try(pe.name, null)
+      subnet_resource_id            = local.subnet_ids["${pe.vnet_key}.${pe.subnet_key}"]
+      private_dns_zone_resource_ids = try(pe.private_dns_zone_resource_ids, [])
+      tags                          = try(pe.tags, null)
+    }
+  }
+ 
+  diagnostic_settings = (
+    contains(keys(each.value), "diagnostic_settings") && length(each.value.diagnostic_settings) > 0
+    ? {
+      for diag_k, diag in each.value.diagnostic_settings :
+      diag_k => {
+        name                  = try(diag.name, null)
+        workspace_resource_id = try(diag.workspace_resource_id, null)
+      }
+    }
+    : null
+  )
+  tags = (
+    try(each.value.tags, null) == null
+    ? null
+    : { for k, v in each.value.tags : k => tostring(v) }
+  )
+  depends_on = [module.law]
+}
+ 
+#--------------------------------------------------------------------
+# Function App
+#--------------------------------------------------------------------
+module "avm-res-web-site" {
+  source                                         = "Azure/avm-res-web-site/azurerm"
+  for_each                                       = { for k, v in local.function_app_configs : k => v }
+  version                                        = "0.19.1"
+  name                                           = each.value.name
+  location                                       = each.value.location
+  resource_group_name                            = each.value.resource_group_name
+  kind                                           = each.value.kind
+  os_type                                        = each.value.os_type
+  https_only                                     = each.value.https_only
+  service_plan_resource_id                       = each.value.service_plan_resource_id #module.avm-res-web-serverfarm.resource_id
+  storage_account_name                           = each.value.storage_account_name     #module.avm-res-storage-storageaccount["st1"].name
+  public_network_access_enabled                  = each.value.public_network_access_enabled
+  enable_application_insights                    = each.value.enable_application_insights
+  virtual_network_subnet_id                      = each.value.virtual_network_subnet_id
+  ftp_publish_basic_authentication_enabled       = each.value.ftp_publish_basic_authentication_enabled
+  webdeploy_publish_basic_authentication_enabled = each.value.webdeploy_publish_basic_authentication_enabled
+  enable_telemetry                               = each.value.enable_telemetry
+  app_settings = (
+    try(each.value.app_settings, null) == null
+    ? null
+    : { for k, v in each.value.app_settings : k => tostring(v) }
+  )
+  site_config = {
+    always_on         = try(each.value.site_config.always_on, null)
+    application_stack = try(each.value.site_config.application_stack, null)
+ 
+    application_insights_connection_string = (
+      each.value.enable_application_insights == false
+      ? module.avm-res-insights-component[each.value.site_config.app_insights_key].connection_string
+      : null
+    )
+ 
+    application_insights_key = (
+      each.value.enable_application_insights == false
+      ? module.avm-res-insights-component[each.value.site_config.app_insights_key].instrumentation_key
+      : null
+    )
+  }
+ 
+  managed_identities = {
+    user_assigned_resource_ids = toset([
+      for id_key in try(each.value.user_assigned_identity_keys, []) :
+      module.avm-res-managedidentity-userassignedidentity[id_key].resource_id
+    ])
+  }
+ 
+  tags = (
+    try(each.value.tags, null) == null
+    ? null
+    : { for k, v in each.value.tags : k => tostring(v) }
+  )
+  depends_on = [module.avm-res-storage-storageaccount, module.avm-res-web-serverfarm]
+}
+ 
+#--------------------------------------------------------------------
+# App Service Plan
+#--------------------------------------------------------------------
+module "avm-res-web-serverfarm" {
+  source              = "Azure/avm-res-web-serverfarm/azurerm"
+  version             = "1.0.0"
+  for_each            = { for k, v in local.app_service_plan : k => v }
+  name                = each.value.name
+  location            = each.value.location
+  resource_group_name = each.value.resource_group_name
+  sku_name            = each.value.sku_name
+  os_type             = each.value.os_type
+  enable_telemetry    = false
+  tags = (
+    try(each.value.tags, null) == null
+    ? null
+    : { for k, v in each.value.tags : k => tostring(v) }
+  )
 }
