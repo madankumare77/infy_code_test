@@ -299,13 +299,13 @@ module "avm-res-web-site" {
     application_stack = try(each.value.site_config.application_stack, null)
 
     application_insights_connection_string = (
-      each.value.enable_application_insights == false
+      each.value.enable_application_insights == true
       ? module.avm-res-insights-component[each.value.site_config.app_insights_key].connection_string
       : null
     )
 
     application_insights_key = (
-      each.value.enable_application_insights == false
+      each.value.enable_application_insights == true
       ? module.avm-res-insights-component[each.value.site_config.app_insights_key].instrumentation_key
       : null
     )

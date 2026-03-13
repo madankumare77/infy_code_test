@@ -83,26 +83,26 @@ jobs:
       #     rm -rf .terraform
       #     rm -f .terraform.lock.hcl
 
-      - name: Terraform init (AAD backend)
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: |
-          terraform init -input=false -upgrade \
-            -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
-            -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
-            -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
-            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
-            -backend-config="use_azuread_auth=true"
-
       # - name: Terraform init (AAD backend)
       #   working-directory: ${{ env.TF_WORKDIR }}
       #   run: |
       #     terraform init -input=false -upgrade \
-      #       -backend-config="sas_token=${{ secrets.TEST_TF_BACKEND_SAS_TOKEN }}" \
-      #       -backend-config="storage_account_name=${{ vars.TEST_TF_BACKEND_SA }}" \
-      #       -backend-config="container_name=${{ vars.TEST_TF_BACKEND_CONTAINER }}" \
+      #       -backend-config="resource_group_name=${{ secrets.TEST_TF_BACKEND_RG }}" \
+      #       -backend-config="storage_account_name=${{ secrets.TEST_TF_BACKEND_SA }}" \
+      #       -backend-config="container_name=${{ secrets.TEST_TF_BACKEND_CONTAINER }}" \
       #       -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
-      #       -backend-config="use_azuread_auth=true" \
-      #     || { echo "Terraform init failed (backend not configured)"; exit 1; }
+      #       -backend-config="use_azuread_auth=true"
+
+      - name: Terraform init (AAD backend)
+        working-directory: ${{ env.TF_WORKDIR }}
+        run: |
+          terraform init -input=false -upgrade \
+            -backend-config="sas_token=${{ secrets.DR_BACKEND_SAS_TOKEN }}" \
+            -backend-config="storage_account_name=${{ vars.TEST_TF_BACKEND_SA }}" \
+            -backend-config="container_name=${{ vars.TEST_TF_BACKEND_CONTAINER }}" \
+            -backend-config="key=${{ secrets.TEST_TF_BACKEND_KEY }}" \
+            -backend-config="use_azuread_auth=true" \
+          || { echo "Terraform init failed (backend not configured)"; exit 1; }
 
       # ADD: Setup Checkov
       # - name: Setup Checkov
