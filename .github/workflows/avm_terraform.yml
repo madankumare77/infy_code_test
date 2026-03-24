@@ -14,9 +14,9 @@ permissions:
 #   build-and-test:
 #     runs-on: arc-runner-set
 
-env:
-  TF_VAR_subscription_id: ${{ vars.JAY_SUB }}
-  TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+# env:
+#   TF_VAR_subscription_id: ${{ vars.JAY_SUB }}
+#   TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
 
 jobs:
   plan-test:
