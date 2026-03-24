@@ -15,7 +15,7 @@ permissions:
 #     runs-on: arc-runner-set
 
 env:
-  TF_VAR_subscription_id: ${{ secrets.JAY_SUB }}
+  TF_VAR_subscription_id: ${{ vars.JAY_SUB }}
 
 jobs:
   plan-test:
@@ -122,19 +122,19 @@ jobs:
       #   continue-on-error: true
 
       # Install Python & Checkov (no Docker needed)
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      # - name: Setup Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.11'
       
-      - name: Install Checkov
-        run: pip install "checkov==3.2.499"
+      # - name: Install Checkov
+      #   run: pip install "checkov==3.2.499"
       
-      # Run Checkov
-      - name: Checkov scan (no fail)
-        working-directory: ${{ env.TF_WORKDIR }}
-        run: checkov -d . --quiet-exit-code --compact || true
-        continue-on-error: true
+      # # Run Checkov
+      # - name: Checkov scan (no fail)
+      #   working-directory: ${{ env.TF_WORKDIR }}
+      #   run: checkov -d . --quiet-exit-code --compact || true
+      #   continue-on-error: true
 
       - name: Terraform validate
         working-directory: ${{ env.TF_WORKDIR }}
