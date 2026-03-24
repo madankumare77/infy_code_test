@@ -24,7 +24,7 @@ provider "azurerm" {
   #subscription_id =  "6a0f429d-3dec-45ca-9dba-8f9847b98a7b" #rat
   storage_use_azuread = true
   subscription_id = var.subscription_id
-  # tenant_id       = var.tenant_id
+  tenant_id       = var.tenant_id
 }
 
 data "azurerm_client_config" "current" {}
@@ -34,7 +34,7 @@ variable "subscription_id" {
   description = "Azure subscription ID."
 }
 
-# variable "tenant_id" {
-#   type        = string
-#   description = "Azure tenant ID."
-# }
+variable "tenant_id" {
+  type        = string
+  description = "Azure tenant ID."
+}
