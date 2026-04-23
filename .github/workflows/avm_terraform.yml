@@ -161,7 +161,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ plan-test ]
     environment: prod
-    if: github.ref == 'refs/heads/main' # Only run apply on main branch
+    #if: github.ref == 'refs/heads/main' # Only run apply on main branch
     env:
       TF_WORKDIR: avm_terraform/avm
 
