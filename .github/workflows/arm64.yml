@@ -1,0 +1,15 @@
+name: arm64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  display-name:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Print a Static Name
+        run: echo "The name is John Doe"
+
+      - name: Print the GitHub Actor's Name
+        # This uses the github context to print the username of the person who triggered the run
+        run: echo "This workflow was triggered by }"
