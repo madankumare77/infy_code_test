@@ -5,7 +5,7 @@ on:
 
 jobs:
   display-name:
-    runs-on: ubuntu-24.04-arm64
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Print a Static Name
         run: echo "The name is John Doe"
